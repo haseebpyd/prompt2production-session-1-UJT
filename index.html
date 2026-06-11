@@ -23,18 +23,34 @@
                 <p class="text-xs text-stone-500">AlrightTech Intern Program</p>
             </div>
         </div>
+        <div class="relative mb-4" id="global-search-wrap">
+            <label for="global-search" class="sr-only">Search handbook</label>
+            <input type="search" id="global-search" placeholder="Search… (⌘K)" autocomplete="off"
+                class="w-full rounded-md border border-stone-300 bg-stone-50 px-3 py-2 text-sm placeholder:text-stone-400 focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500">
+            <div id="global-search-results" class="global-search-results hidden" role="listbox" aria-label="Search results"></div>
+            <p id="global-search-status" class="mt-1 px-1 text-xs text-stone-400 hidden"></p>
+        </div>
         <ul class="space-y-1 text-sm">
             <li><a href="#home" class="nav-link active block px-3 py-2 rounded-md" data-target="home">Home & Overview</a></li>
             <li class="pt-3 pb-1 px-3 text-xs font-semibold text-stone-400 uppercase tracking-wide">Part I — Foundations</li>
             <li><a href="#foundations" class="nav-link block px-3 py-2 rounded-md" data-target="foundations">1. Introduction to AI</a></li>
             <li><a href="#llms" class="nav-link block px-3 py-2 rounded-md" data-target="llms">2. Understanding LLMs</a></li>
-            <li><a href="#prompting" class="nav-link block px-3 py-2 rounded-md" data-target="prompting">3. Prompt Engineering</a></li>
-            <li><a href="#prompting-context" class="nav-sublink block py-1.5 rounded-md" data-target="prompting-context">↳ Context Engineering</a></li>
-            <li><a href="#prompting-images" class="nav-sublink block py-1.5 rounded-md" data-target="prompting-images">↳ Image Generation</a></li>
-            <li><a href="#prompting-ux" class="nav-sublink block py-1.5 rounded-md" data-target="prompting-ux">↳ UX Design</a></li>
-            <li><a href="#prompting-ui" class="nav-sublink block py-1.5 rounded-md" data-target="prompting-ui">↳ UI Development</a></li>
-            <li><a href="#prompting-video" class="nav-sublink block py-1.5 rounded-md" data-target="prompting-video">↳ Video Generation</a></li>
-            <li><a href="#prompting-gpts" class="nav-sublink block py-1.5 rounded-md" data-target="prompting-gpts">↳ Custom GPTs &amp; Gems</a></li>
+            <li class="nav-group" id="nav-group-prompting" data-nav-group="prompting">
+                <div class="nav-group-header">
+                    <a href="#prompting" class="nav-link nav-group-parent block px-3 py-2 rounded-md" data-target="prompting">3. Prompt Engineering</a>
+                    <button type="button" class="nav-group-toggle" aria-expanded="true" aria-controls="nav-sub-prompting" aria-label="Toggle Prompt Engineering topics">
+                        <span class="nav-chevron" aria-hidden="true"></span>
+                    </button>
+                </div>
+                <ul id="nav-sub-prompting" class="nav-sublist">
+                    <li><a href="#prompting-context" class="nav-sublink block py-1.5 rounded-md" data-target="prompting-context">Context Engineering</a></li>
+                    <li><a href="#prompting-images" class="nav-sublink block py-1.5 rounded-md" data-target="prompting-images">Image Generation</a></li>
+                    <li><a href="#prompting-ux" class="nav-sublink block py-1.5 rounded-md" data-target="prompting-ux">UX Design</a></li>
+                    <li><a href="#prompting-ui" class="nav-sublink block py-1.5 rounded-md" data-target="prompting-ui">UI Development</a></li>
+                    <li><a href="#prompting-video" class="nav-sublink block py-1.5 rounded-md" data-target="prompting-video">Video Generation</a></li>
+                    <li><a href="#prompting-gpts" class="nav-sublink block py-1.5 rounded-md" data-target="prompting-gpts">Custom GPTs &amp; Gems</a></li>
+                </ul>
+            </li>
             <li class="pt-3 pb-1 px-3 text-xs font-semibold text-stone-400 uppercase tracking-wide">Part II — Build & Ship</li>
             <li><a href="#one-page-app" class="nav-link block px-3 py-2 rounded-md" data-target="one-page-app">4. One-Page App (Web LLM)</a></li>
             <li><a href="#agile" class="nav-link block px-3 py-2 rounded-md" data-target="agile">5. Agile & Sprints</a></li>
