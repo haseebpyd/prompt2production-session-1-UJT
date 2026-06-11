@@ -1,0 +1,82 @@
+<section id="one-page-app" class="chapter space-y-8">
+                <header>
+                    <h2 class="text-4xl font-bold text-stone-900">Chapter 4: Practical — One-Page App with Web LLMs</h2>
+                    <p class="text-lg text-stone-600 mt-2">Your first hands-on build. No IDE, no setup — just a web browser, an LLM, and a text editor. Generate a complete single-file app and run it locally.</p>
+                </header>
+
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-2xl font-semibold text-indigo-700 mb-4">4.1 What You Will Build</h3>
+                    <p class="text-stone-700 mb-4">A <strong>single-file HTML application</strong> — all HTML, CSS, and JavaScript in one file. Pick one:</p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div class="bg-blue-50 p-4 rounded-lg border border-blue-200"><strong class="text-blue-900">Unit Converter</strong><p class="text-sm text-blue-800 mt-1">Temperature, length, or currency</p></div>
+                        <div class="bg-green-50 p-4 rounded-lg border border-green-200"><strong class="text-green-900">Todo List</strong><p class="text-sm text-green-800 mt-1">Add, complete, delete tasks — localStorage</p></div>
+                        <div class="bg-purple-50 p-4 rounded-lg border border-purple-200"><strong class="text-purple-900">Expense Tracker</strong><p class="text-sm text-purple-800 mt-1">Log expenses, show running total</p></div>
+                        <div class="bg-amber-50 p-4 rounded-lg border border-amber-200"><strong class="text-amber-900">Quiz App</strong><p class="text-sm text-amber-800 mt-1">Multiple choice with score tracking</p></div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-2xl font-semibold text-indigo-700 mb-4">4.2 Step-by-Step Workflow</h3>
+                    <div class="space-y-4">
+                        <div class="flex gap-4 items-start">
+                            <span class="flex-shrink-0 w-8 h-8 bg-indigo-600 text-white rounded-full flex items-center justify-center font-bold text-sm">1</span>
+                            <div><h4 class="font-semibold">Open a web LLM</h4><p class="text-sm text-stone-600">Go to <a href="https://chat.openai.com" class="text-indigo-600 hover:underline">ChatGPT</a>, <a href="https://claude.ai" class="text-indigo-600 hover:underline">Claude</a>, or <a href="https://gemini.google.com" class="text-indigo-600 hover:underline">Gemini</a>.</p></div>
+                        </div>
+                        <div class="flex gap-4 items-start">
+                            <span class="flex-shrink-0 w-8 h-8 bg-indigo-600 text-white rounded-full flex items-center justify-center font-bold text-sm">2</span>
+                            <div><h4 class="font-semibold">Write a structured prompt</h4><p class="text-sm text-stone-600">Use the 6-step framework from Chapter 3. Copy the starter prompt below.</p></div>
+                        </div>
+                        <div class="flex gap-4 items-start">
+                            <span class="flex-shrink-0 w-8 h-8 bg-indigo-600 text-white rounded-full flex items-center justify-center font-bold text-sm">3</span>
+                            <div><h4 class="font-semibold">Copy the generated code</h4><p class="text-sm text-stone-600">Paste into a file named <code class="bg-stone-100 px-1 rounded">index.html</code>. Open it in your browser.</p></div>
+                        </div>
+                        <div class="flex gap-4 items-start">
+                            <span class="flex-shrink-0 w-8 h-8 bg-indigo-600 text-white rounded-full flex items-center justify-center font-bold text-sm">4</span>
+                            <div><h4 class="font-semibold">Iterate with follow-up prompts</h4><p class="text-sm text-stone-600">"Add dark mode", "Fix the button alignment", "Add localStorage persistence" — refine until it works.</p></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-2xl font-semibold text-indigo-700 mb-4">4.3 Starter Prompt (Copy & Customize)</h3>
+                    <div class="bg-stone-900 text-green-400 p-4 rounded font-mono text-sm code-block">
+                        <button class="copy-code-btn bg-blue-500 hover:bg-blue-600 text-white rounded px-2 py-1" data-copy="Role: Act as a senior frontend developer specializing in vanilla JavaScript.
+
+Task: Create a complete, single-file HTML todo list application.
+
+Context: This is a learning exercise for an intern. The app must work by opening the HTML file directly in a browser — no build tools, no npm.
+
+Constraints:
+- Single file only (HTML + embedded CSS + embedded JS)
+- Use Tailwind CSS via CDN
+- Dark theme, fully responsive
+- Store todos in localStorage so they persist on refresh
+- Include add, complete (toggle), and delete functionality
+
+Format: Output only the complete, runnable HTML file in a single code block. No explanations.">Copy</button>
+                        <pre class="whitespace-pre-wrap text-xs mt-6">Role: Act as a senior frontend developer specializing in vanilla JavaScript.
+
+Task: Create a complete, single-file HTML todo list application.
+
+Context: This is a learning exercise for an intern. The app must work by opening the HTML file directly in a browser — no build tools, no npm.
+
+Constraints:
+- Single file only (HTML + embedded CSS + embedded JS)
+- Use Tailwind CSS via CDN
+- Dark theme, fully responsive
+- Store todos in localStorage so they persist on refresh
+- Include add, complete (toggle), and delete functionality
+
+Format: Output only the complete, runnable HTML file in a single code block. No explanations.</pre>
+                    </div>
+                </div>
+
+                <div class="bg-amber-50 border border-amber-200 p-5 rounded-lg">
+                    <h4 class="font-bold text-amber-900 mb-2">Checkpoint Before Moving On</h4>
+                    <ul class="list-disc pl-5 text-sm text-amber-800 space-y-1">
+                        <li>Your app opens in the browser and all features work</li>
+                        <li>You iterated at least 2–3 times with follow-up prompts</li>
+                        <li>You can explain what each part of the prompt contributed to the output</li>
+                    </ul>
+                </div>
+            </section>

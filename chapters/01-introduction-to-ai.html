@@ -1,0 +1,304 @@
+<section id="foundations" class="chapter space-y-8">
+                <header>
+                    <h2 class="text-4xl font-bold text-stone-900">Chapter 1: Introduction to AI</h2>
+                    <p class="text-lg text-stone-600 mt-2">Before writing a single prompt, understand what AI is, how it evolved, and where we are today. This chapter bridges fundamental CS principles with GenAI and agentic systems.</p>
+                </header>
+
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-2xl font-semibold text-indigo-700 mb-4">1.1 What is AI? The Four Schools of Thought</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="bg-stone-100 p-4 rounded-lg">
+                            <h4 class="font-semibold text-stone-800">Thinking Humanly</h4>
+                            <p class="text-stone-600">Modeling human cognition (cognitive science).</p>
+                        </div>
+                        <div class="bg-stone-100 p-4 rounded-lg">
+                            <h4 class="font-semibold text-stone-800">Acting Humanly</h4>
+                            <p class="text-stone-600">Passing the Turing Test (mimicking human behavior).</p>
+                        </div>
+                        <div class="bg-stone-100 p-4 rounded-lg">
+                            <h4 class="font-semibold text-stone-800">Thinking Rationally</h4>
+                            <p class="text-stone-600">Using formal logic and inference (logic-based AI).</p>
+                        </div>
+                        <div class="bg-stone-100 p-4 rounded-lg">
+                            <h4 class="font-semibold text-stone-800">Acting Rationally</h4>
+                            <p class="text-stone-600">Achieving the best outcome (rational agents).</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-2xl font-semibold text-indigo-700 mb-6">1.2 The Evolution of Intelligence: A Timeline</h3>
+                    
+                    <p class="text-stone-700 mb-6">The field of AI has seen three major waves of progress:</p>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                        <div class="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200 hover-card">
+                            <div class="text-4xl mb-2">⚙️</div>
+                            <h4 class="text-lg font-bold text-blue-900 mb-2">Classical/Symbolic AI (1950s–1980s)</h4>
+                            <p class="text-sm text-blue-800 mb-2">Based on hard-coded rules and logic.</p>
+                            <p class="text-xs text-blue-700 italic">Systems were excellent at tasks like chess (Deep Blue) but brittle and unable to handle noise or uncertainty.</p>
+                            <div class="mt-3 pt-3 border-t border-blue-300">
+                                <p class="text-xs font-semibold text-blue-900">Key Concept:</p>
+                                <p class="text-xs text-blue-800">Expert Systems (e.g., MYCIN)</p>
+        </div>
+    </div>
+
+                        <div class="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg border border-purple-200 hover-card">
+                            <div class="text-4xl mb-2">📊</div>
+                            <h4 class="text-lg font-bold text-purple-900 mb-2">Machine Learning (1990s–2010s)</h4>
+                            <p class="text-sm text-purple-800 mb-2">Shifted to statistical models that learned from data.</p>
+                            <p class="text-xs text-purple-700 italic">Introduction of algorithms like Support Vector Machines (SVMs) and Random Forests.</p>
+                            <div class="mt-3 pt-3 border-t border-purple-300">
+                                <p class="text-xs font-semibold text-purple-900">Key Concept:</p>
+                                <p class="text-xs text-purple-800">Feature Engineering (humans manually defined input features)</p>
+        </div>
+    </div>
+
+                        <div class="bg-gradient-to-br from-indigo-50 to-indigo-100 p-4 rounded-lg border border-indigo-200 hover-card">
+                            <div class="text-4xl mb-2">🕸️</div>
+                            <h4 class="text-lg font-bold text-indigo-900 mb-2">Deep Learning (2010s–Present)</h4>
+                            <p class="text-sm text-indigo-800 mb-2">Uses Deep Neural Networks (DNNs) with many hidden layers.</p>
+                            <p class="text-xs text-indigo-700 italic">Automatically extracts features from raw data (e.g., pixels, raw text).</p>
+                            <div class="mt-3 pt-3 border-t border-indigo-300">
+                                <p class="text-xs font-semibold text-indigo-900">Key Concept:</p>
+                                <p class="text-xs text-indigo-800">Transformer Architecture (the foundation for LLMs)</p>
+        </div>
+        </div>
+    </div>
+
+                    <div class="flex justify-center mt-10">
+                        <img src="image.png" alt="History of Artificial Intelligence Timeline" class="max-w-full h-auto rounded-lg shadow-lg">
+        </div>
+        </div>
+
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-2xl font-semibold text-indigo-700 mb-4">⚡ Key Historical Events & Fascinating Facts</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <div class="bg-gradient-to-br from-red-50 to-red-100 p-5 rounded-lg border-2 border-red-300 hover-card">
+                            <div class="text-4xl mb-3 text-center">♟️</div>
+                            <h4 class="font-bold text-red-900 text-lg mb-2 text-center">Deep Blue vs. Kasparov (1997)</h4>
+                            <p class="text-sm text-red-800">IBM's supercomputer <strong>Deep Blue</strong> defeated world chess champion Garry Kasparov in a 6-game match. This landmark event proved that computers could outperform humans in complex strategic games through brute force computation and search algorithms.</p>
+    </div>
+    
+                        <div class="bg-gradient-to-br from-green-50 to-green-100 p-5 rounded-lg border-2 border-green-300 hover-card">
+                            <div class="text-4xl mb-3 text-center">📈</div>
+                            <h4 class="font-bold text-green-900 text-lg mb-2 text-center">ChatGPT's Explosive Growth (2022)</h4>
+                            <p class="text-sm text-green-800"><strong>100 million users in just 2 months!</strong> To put this in perspective: It took the Internet 7 years to reach 50 million users, and Netflix 10 years. ChatGPT achieved this milestone faster than any consumer application in history, signaling the mainstream adoption of AI.</p>
+        </div>
+        </div>
+
+                    <div class="flex justify-center mb-6">
+                        <img src="gpt_graph.png" alt="ChatGPT vs Internet User Growth Comparison" class="max-w-full h-auto rounded-lg shadow-lg">
+    </div>
+
+                    <div class="flex justify-center mb-6">
+                        <img src="timetoreach1m.png" alt="Time to Reach 1 Million Users - Technology Adoption Comparison" class="max-w-full h-auto rounded-lg shadow-lg">
+        </div>
+
+                    <div class="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-lg border-2 border-blue-300 mb-6">
+                        <h4 class="font-bold text-blue-900 text-xl mb-4">🎯 The Progression of AI Capabilities</h4>
+                        <div class="space-y-4">
+                            <div class="bg-white p-4 rounded-lg border-l-4 border-blue-500">
+                                <div class="flex items-start">
+                                    <span class="text-2xl mr-3">🐱</span>
+                                    <div>
+                                        <h5 class="font-semibold text-blue-900 mb-1">1. Detection (2010s)</h5>
+                                        <p class="text-sm text-blue-800">Early AI could barely distinguish between a cat and a dog in images. Basic pattern recognition.</p>
+        </div>
+    </div>
+        </div>
+                            <div class="bg-white p-4 rounded-lg border-l-4 border-green-500">
+                                <div class="flex items-start">
+                                    <span class="text-2xl mr-3">📊</span>
+                                    <div>
+                                        <h5 class="font-semibold text-green-900 mb-1">2. Classification (Mid-2010s)</h5>
+                                        <p class="text-sm text-green-800">AI evolved to categorize images into thousands of classes, enabling practical image search and object detection.</p>
+        </div>
+    </div>
+        </div>
+                            <div class="bg-white p-4 rounded-lg border-l-4 border-purple-500">
+                                <div class="flex items-start">
+                                    <span class="text-2xl mr-3">🔮</span>
+                                    <div>
+                                        <h5 class="font-semibold text-purple-900 mb-1">3. Prediction (Late-2010s)</h5>
+                                        <p class="text-sm text-purple-800">Machine learning models became excellent at forecasting: stock prices, weather, customer behavior, and more.</p>
+        </div>
+    </div>
+        </div>
+                            <div class="bg-white p-4 rounded-lg border-l-4 border-orange-500">
+                                <div class="flex items-start">
+                                    <span class="text-2xl mr-3">✨</span>
+                                    <div>
+                                        <h5 class="font-semibold text-orange-900 mb-1">4. Generation (2020–Present)</h5>
+                                        <p class="text-sm text-orange-800">AI now creates: text (GPT), images (DALL-E, Midjourney), code, music, and video. Fully original, high-quality content.</p>
+        </div>
+    </div>
+</div>
+                            <div class="bg-white p-4 rounded-lg border-l-4 border-indigo-500">
+                                <div class="flex items-start">
+                                    <span class="text-2xl mr-3">🤖</span>
+                                    <div>
+                                        <h5 class="font-semibold text-indigo-900 mb-1">5. Agents (2024–Present)</h5>
+                                        <p class="text-sm text-indigo-800">AI agents with autonomy: planning, reasoning, and executing multi-step tasks with tools. The future of autonomous software development.</p>
+</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+</div>
+                
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-2xl font-semibold text-indigo-700 mb-4">1.3 The Current Frontier (2025)</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <h4 class="text-xl font-semibold mb-2">Generative AI (GenAI) & LLM Platforms</h4>
+                            <p class="text-stone-600 mb-3">The ability of models to <strong>create new content</strong> (code, text, images). Powered by the <strong>Transformer Architecture</strong>. This model uses a Self-Attention mechanism to weigh the importance of different words in the input sequence, allowing it to understand deep context and generate coherent, creative text by predicting the next most likely token.</p>
+                            <p class="text-stone-600 mb-3">The top platforms include:</p>
+                                <ul class="list-disc pl-5 mt-2 space-y-1">
+                                    <li><a href="https://gemini.google.com/" target="_blank" class="text-indigo-600 hover:underline">Google Gemini</a></li>
+                                    <li><a href="https://openai.com/" target="_blank" class="text-indigo-600 hover:underline">OpenAI (GPT Models)</a></li>
+                                    <li><a href="https://claude.ai/" target="_blank" class="text-indigo-600 hover:underline">Anthropic Claude</a></li>
+                                </ul>
+                        </div>
+                        <div>
+                            <h4 class="text-xl font-semibold mb-2">Agentic AI (e.g., Manua/Veo 3 Concepts)</h4>
+                            <p class="text-stone-600 mb-3">Moving beyond chatbots, Agentic AI systems are capable of autonomous planning, reasoning, and execution of multi-step tasks with minimal human input. The concepts behind advanced models like Manua and Veo 3 exemplify this next generation of planning and execution.
+                            </p>
+                            
+                            <div class="bg-indigo-50 p-4 rounded-lg mb-3">
+                                <p class="text-sm font-semibold text-indigo-900 mb-2">The Agent Loop (P-R-A):</p>
+                                <div class="flex items-center justify-around text-center">
+                                    <div class="flex-1">
+                                        <span class="font-semibold text-indigo-700 block">Perceive</span>
+                                        <span class="text-xs text-indigo-600 block">Take user prompt & access tools/data</span>
+                                    </div>
+                                <span class="text-indigo-400 font-bold">→</span>
+                                    <div class="flex-1">
+                                        <span class="font-semibold text-indigo-700 block">Reason/Plan</span>
+                                        <span class="text-xs text-indigo-600 block">Break goal into sub-tasks</span>
+                                    </div>
+                                <span class="text-indigo-400 font-bold">→</span>
+                                    <div class="flex-1">
+                                        <span class="font-semibold text-indigo-700 block">Act/Execute</span>
+                                        <span class="text-xs text-indigo-600 block">Run code, call API, deploy</span>
+                            </div>
+                                </div>
+                            </div>
+                            <p class="text-xs text-stone-600 italic">Developer Impact: This enables automated QA, bug fixing, and complex workflow orchestration using frameworks like <a href="https://www.langchain.com/" target="_blank" class="text-indigo-600 hover:underline">LangChain</a> and <a href="https://www.crewai.com/" target="_blank" class="text-indigo-600 hover:underline">CrewAI</a>.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-2xl font-semibold text-indigo-700 mb-4">🧠 How Machines Learn: Neural Networks & LLMs</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <div>
+                            <h4 class="text-xl font-semibold mb-3 text-indigo-900">Basics of Neural Networks</h4>
+                            <p class="text-sm text-stone-700 mb-3">Neural networks are computing systems made of interconnected nodes (like neurons) organized in layers: Input → Hidden → Output</p>
+                            <p class="text-sm text-stone-600 mb-4"><strong>Key Concept:</strong> Each connection has a weight that gets adjusted during training. The network learns by minimizing errors through a process called backpropagation.</p>
+                            <div class="flex justify-center">
+                                <img src="neuralnetwork.png" alt="Illustrative example of a neural network" class="max-w-full h-auto rounded-lg shadow-md">
+                            </div>
+                        </div>
+                        <div>
+                            <h4 class="text-xl font-semibold mb-3 text-indigo-900">Types of Machine Learning</h4>
+                            <p class="text-sm text-stone-700 mb-4">Machine learning encompasses three main paradigms, each with different approaches to learning from data.</p>
+                            <div class="flex justify-center">
+                                <img src="typesofmachinelearning.png" alt="Types of Machine Learning: Supervised, Unsupervised, and Reinforcement Learning" class="max-w-full h-auto rounded-lg shadow-md">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-6">
+                        <h4 class="text-xl font-semibold mb-3 text-indigo-900">How LLMs Learn Text Patterns</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                            <div class="bg-gradient-to-r from-purple-50 to-indigo-50 p-4 rounded-lg border-l-4 border-purple-500">
+                                <h5 class="font-bold text-purple-900 mb-2">1. Training Phase</h5>
+                                <p class="text-xs text-stone-700">LLMs are trained on vast amounts of text (trillions of words from books, articles, code). They learn to predict the next word in a sequence.</p>
+                            </div>
+                            <div class="bg-gradient-to-r from-blue-50 to-cyan-50 p-4 rounded-lg border-l-4 border-blue-500">
+                                <h5 class="font-bold text-blue-900 mb-2">2. Attention Mechanism</h5>
+                                <p class="text-xs text-stone-700">The Transformer architecture's "self-attention" allows the model to focus on relevant words in the context, understanding relationships between words.</p>
+                            </div>
+                            <div class="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-lg border-l-4 border-green-500">
+                                <h5 class="font-bold text-green-900 mb-2">3. Pattern Recognition</h5>
+                                <p class="text-xs text-stone-700">After billions of examples, the model recognizes patterns: grammar, facts, code syntax, reasoning chains, and even creative writing styles.</p>
+                            </div>
+                            <div class="bg-gradient-to-r from-orange-50 to-amber-50 p-4 rounded-lg border-l-4 border-orange-500">
+                                <h5 class="font-bold text-orange-900 mb-2">4. Generation</h5>
+                                <p class="text-xs text-stone-700">When you prompt an LLM, it uses these learned patterns to generate coherent, contextually relevant text, code, or solutions.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-gradient-to-br from-green-50 via-emerald-50 to-green-100 p-6 rounded-lg shadow-md border-2 border-green-300">
+                    <h3 class="text-2xl font-semibold text-green-900 mb-4">📍 Where We Are Now: The GPT Era (2023-Present)</h3>
+                    
+                    <div class="flex justify-center mb-6">
+                        <img src="whereai stands.png" alt="AI Landscape Diagram: From Symbolic AI to ChatGPT" class="max-w-full h-auto rounded-lg shadow-md">
+                    </div>
+
+                    <div class="space-y-4">
+                        <div class="bg-white p-5 rounded-lg border border-green-200">
+                            <h4 class="text-lg font-bold text-green-900 mb-2">🚀 Major Breakthroughs</h4>
+                            <ul class="space-y-2 text-sm text-stone-700">
+                                <li class="flex items-start">
+                                    <span class="text-green-600 mr-2">•</span>
+                                    <span><strong>ChatGPT Release (Nov 2022):</strong> First consumer-friendly LLM with 100M users in 2 months</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <span class="text-green-600 mr-2">•</span>
+                                    <span><strong>GPT-4 (Mar 2023):</strong> Multimodal capabilities (text, images, code) with improved reasoning</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <span class="text-green-600 mr-2">•</span>
+                                    <span><strong>Claude, Gemini (2023-2024):</strong> Competitive LLMs challenging GPT dominance</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <span class="text-green-600 mr-2">•</span>
+                                    <span><strong>Agentic AI (2024):</strong> Autonomous agents using tools, planning, and multi-step execution</span>
+                                </li>
+                            </ul>
+                        </div>
+                        
+                        <div class="bg-white p-5 rounded-lg border border-green-200">
+                            <h4 class="text-lg font-bold text-green-900 mb-2">🎯 Current AI Capabilities</h4>
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                                <div class="text-center p-3 bg-purple-50 rounded">
+                                    <span class="text-2xl block mb-1">💬</span>
+                                    <strong class="text-purple-900">Text</strong>
+                                    <p class="text-purple-700">Writing, analysis, translation</p>
+                                </div>
+                                <div class="text-center p-3 bg-blue-50 rounded">
+                                    <span class="text-2xl block mb-1">💻</span>
+                                    <strong class="text-blue-900">Code</strong>
+                                    <p class="text-blue-700">Generation, debugging, docs</p>
+                                </div>
+                                <div class="text-center p-3 bg-orange-50 rounded">
+                                    <span class="text-2xl block mb-1">🎨</span>
+                                    <strong class="text-orange-900">Images</strong>
+                                    <p class="text-orange-700">Art, design, photorealistic</p>
+                                </div>
+                                <div class="text-center p-3 bg-green-50 rounded">
+                                    <span class="text-2xl block mb-1">🎥</span>
+                                    <strong class="text-green-900">Video</strong>
+                                    <p class="text-green-700">Generation, editing, Sora</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white p-5 rounded-lg border border-green-200">
+                            <h4 class="text-lg font-bold text-green-900 mb-2">🔮 The Future: Robotics & Autonomous Agents</h4>
+                            <p class="text-sm text-stone-700 mb-3">The convergence of AI models with physical systems is enabling:</p>
+                            <div class="flex flex-wrap gap-2">
+                                <span class="bg-indigo-100 text-indigo-900 px-3 py-1 rounded-full text-xs font-medium">🚗 Autonomous Vehicles</span>
+                                <span class="bg-purple-100 text-purple-900 px-3 py-1 rounded-full text-xs font-medium">🏭 Industrial Automation</span>
+                                <span class="bg-blue-100 text-blue-900 px-3 py-1 rounded-full text-xs font-medium">🏥 Surgical Robots</span>
+                                <span class="bg-green-100 text-green-900 px-3 py-1 rounded-full text-xs font-medium">🤖 Humanoid Robots</span>
+                                <span class="bg-orange-100 text-orange-900 px-3 py-1 rounded-full text-xs font-medium">🏗️ Construction AI</span>
+                                <span class="bg-red-100 text-red-900 px-3 py-1 rounded-full text-xs font-medium">🌍 Climate Solutions</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>

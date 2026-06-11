@@ -1,0 +1,211 @@
+<section id="main-journey" class="chapter space-y-8">
+                <header>
+                    <h2 class="text-4xl font-bold text-stone-900">Chapter 7: The Main Journey — Full Stack to Production</h2>
+                    <p class="text-lg text-stone-600 mt-2">This is the capstone. Build a real full stack web or mobile application using sprint planning, Cursor/Antigravity, Git, and cloud deployment.</p>
+                </header>
+
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-2xl font-semibold text-indigo-700 mb-4">7.1 Project Options</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="border-2 border-indigo-200 p-5 rounded-lg hover-card">
+                            <h4 class="font-bold text-indigo-900 mb-2">Web Application</h4>
+                            <p class="text-sm text-stone-600 mb-2">React/Next.js + API + database</p>
+                            <p class="text-xs text-stone-500">Examples: task manager, blog CMS, expense tracker, team dashboard</p>
+                        </div>
+                        <div class="border-2 border-purple-200 p-5 rounded-lg hover-card">
+                            <h4 class="font-bold text-purple-900 mb-2">Mobile Application</h4>
+                            <p class="text-sm text-stone-600 mb-2">Flutter/React Native + Firebase backend</p>
+                            <p class="text-xs text-stone-500">Examples: habit tracker, recipe app, event RSVP, fitness log</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-2xl font-semibold text-indigo-700 mb-4">7.2 The Development Loop</h3>
+                    <p class="text-stone-600 mb-4">For each sprint story, repeat this loop with Cursor/Antigravity:</p>
+                    <div class="space-y-6">
+                        <div class="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-400">
+                            <h4 class="font-bold text-blue-900 mb-2">1. Scaffolding with AI</h4>
+                            <p class="text-blue-800 mb-3">Use structured prompts to generate project structure, components, and API routes.</p>
+                            <div class="bg-stone-900 text-green-400 p-3 rounded font-mono text-sm code-block">
+                                <button class="copy-code-btn bg-blue-500 hover:bg-blue-600 text-white rounded px-2 py-1" data-copy="Generate a complete, modern, single-file HTML website for a Computer Science student's portfolio. The design must use a dark theme and be fully responsive using Tailwind CSS classes.">Copy</button>
+                                <p class="text-xs mt-6">Role: Act as a senior full stack developer. Task: Scaffold a Next.js 14 app with App Router, Tailwind CSS, and a /dashboard page. Context: Intern capstone project at AlrightTech. Constraints: TypeScript, no external UI libraries. Format: List all files to create with brief descriptions.</p>
+                            </div>
+                        </div>
+
+                        <div class="bg-green-50 p-4 rounded-lg border-l-4 border-green-400">
+                            <h4 class="font-bold text-green-900 mb-3">2. Version Control (Git)</h4>
+                            <p class="text-green-800 mb-4">Commit after every completed user story. Never lose AI-generated work.</p>
+                            
+                            <div class="space-y-3">
+                                <div class="bg-stone-900 text-green-400 p-3 rounded font-mono text-sm code-block">
+                                    <button class="copy-code-btn bg-green-500 hover:bg-green-600 text-white rounded px-2 py-1" data-copy="git init">Copy</button>
+                                    <code>git init</code>
+                                    <span class="text-green-200 text-xs block mt-1">Initialize a new Git repository</span>
+                                </div>
+                                
+                                <div class="bg-stone-900 text-green-400 p-3 rounded font-mono text-sm code-block">
+                                    <button class="copy-code-btn bg-green-500 hover:bg-green-600 text-white rounded px-2 py-1" data-copy="git add .">Copy</button>
+                                    <code>git add .</code>
+                                    <span class="text-green-200 text-xs block mt-1">Add all files to staging area</span>
+                                </div>
+                                
+                                <div class="bg-stone-900 text-green-400 p-3 rounded font-mono text-sm code-block">
+                                    <button class="copy-code-btn bg-green-500 hover:bg-green-600 text-white rounded px-2 py-1" data-copy='git commit -m "feat: initial portfolio structure generated by AI"'>Copy</button>
+                                    <code>git commit -m "feat: add user authentication (sprint 1)"</code>
+                                    <span class="text-green-200 text-xs block mt-1">Create a commit with descriptive message</span>
+                                </div>
+                                
+                                <div class="bg-stone-900 text-green-400 p-3 rounded font-mono text-sm code-block">
+                                    <button class="copy-code-btn bg-green-500 hover:bg-green-600 text-white rounded px-2 py-1" data-copy="git push -u origin main">Copy</button>
+                                    <code>git push -u origin main</code>
+                                    <span class="text-green-200 text-xs block mt-1">Push to GitHub repository</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-purple-50 p-4 rounded-lg border-l-4 border-purple-400">
+                            <h4 class="font-bold text-purple-900 mb-2">3. Preparing for Continuous Deployment</h4>
+                            <p class="text-purple-800">Connect your GitHub repo to Vercel or Netlify. Every push to main auto-deploys your latest sprint work to a live URL.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-2xl font-semibold text-indigo-700 mb-4">7.3 Understanding Deployment: From Localhost to the Cloud</h3>
+                    <p class="text-stone-600 mb-4">For any application to be accessible by anyone other than you, it needs to be deployed. This is the final step of your capstone project.</p>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                        <div class="bg-gradient-to-br from-red-50 to-red-100 p-5 rounded-lg border border-red-200 hover-card">
+                            <div class="flex items-start mb-3">
+                                <span class="text-3xl mr-3">💻</span>
+                        <div>
+                                    <h4 class="font-bold text-red-900 mb-1">Localhost</h4>
+                                    <p class="text-xs text-red-700">Your own computer</p>
+                        </div>
+                            </div>
+                            <p class="text-sm text-red-800 mb-2"><strong>Definition:</strong> Code only runs and is accessible on your machine (e.g., via http://127.0.0.1)</p>
+                            <p class="text-xs text-red-700 italic"><strong>Importance:</strong> Ideal for development, testing, and debugging before sharing</p>
+                        </div>
+
+                        <div class="bg-gradient-to-br from-blue-50 to-blue-100 p-5 rounded-lg border border-blue-200 hover-card">
+                            <div class="flex items-start mb-3">
+                                <span class="text-3xl mr-3">🚀</span>
+                        <div>
+                                    <h4 class="font-bold text-blue-900 mb-1">Deployment</h4>
+                                    <p class="text-xs text-blue-700">Automated process</p>
+                        </div>
+                    </div>
+                            <p class="text-sm text-blue-800 mb-2"><strong>Definition:</strong> Taking your code and placing it on a globally accessible web server (the Cloud)</p>
+                            <p class="text-xs text-blue-700 italic"><strong>Importance:</strong> Makes the application accessible via a public URL (e.g., https://www.your-portfolio.com)</p>
+                </div>
+
+                        <div class="bg-gradient-to-br from-green-50 to-green-100 p-5 rounded-lg border border-green-200 hover-card">
+                            <div class="flex items-start mb-3">
+                                <span class="text-3xl mr-3">☁️</span>
+                                <div>
+                                    <h4 class="font-bold text-green-900 mb-1">Hosting Providers</h4>
+                                    <p class="text-xs text-green-700">Vercel, Netlify, AWS</p>
+                                </div>
+                            </div>
+                            <p class="text-sm text-green-800 mb-2"><strong>Definition:</strong> Services that provide web servers and bandwidth to run your application</p>
+                            <p class="text-xs text-green-700 italic"><strong>Importance:</strong> Manages infrastructure, security, and global availability for you</p>
+                        </div>
+
+                        <div class="bg-gradient-to-br from-purple-50 to-purple-100 p-5 rounded-lg border border-purple-200 hover-card">
+                            <div class="flex items-start mb-3">
+                                <span class="text-3xl mr-3">🔄</span>
+                                <div>
+                                    <h4 class="font-bold text-purple-900 mb-1">Continuous Deployment (CD)</h4>
+                                    <p class="text-xs text-purple-700">Git push → Auto deploy</p>
+                                </div>
+                            </div>
+                            <p class="text-sm text-purple-800 mb-2"><strong>Definition:</strong> Hosting provider connected to GitHub, auto-builds on each git push</p>
+                            <p class="text-xs text-purple-700 italic"><strong>Importance:</strong> Enables rapid iteration, bug fixes, zero-downtime updates with minimal effort</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-gradient-to-r from-indigo-50 to-purple-50 p-6 rounded-lg border-2 border-indigo-200 mb-4">
+                        <h4 class="font-bold text-indigo-900 mb-4 text-center">Deployment Flow: From Idea to Production</h4>
+                        <div class="deployment-flow">
+                            <div class="flow-item">
+                                <div class="bg-white p-4 rounded-lg shadow-md hover-card">
+                                    <div class="text-3xl mb-2">💻</div>
+                                    <p class="font-semibold text-stone-800">Localhost</p>
+                                    <p class="text-xs text-stone-600">Development</p>
+                                </div>
+                            </div>
+                            <span class="flow-arrow">→</span>
+                            <div class="flow-item">
+                                <div class="bg-white p-4 rounded-lg shadow-md hover-card">
+                                    <div class="text-3xl mb-2">📦</div>
+                                    <p class="font-semibold text-stone-800">Git</p>
+                                    <p class="text-xs text-stone-600">Version Control</p>
+                                </div>
+                            </div>
+                            <span class="flow-arrow">→</span>
+                            <div class="flow-item">
+                                <div class="bg-white p-4 rounded-lg shadow-md hover-card">
+                                    <div class="text-3xl mb-2">🐙</div>
+                                    <p class="font-semibold text-stone-800">GitHub</p>
+                                    <p class="text-xs text-stone-600">Repository</p>
+                                </div>
+                            </div>
+                            <span class="flow-arrow">→</span>
+                            <div class="flow-item">
+                                <div class="bg-white p-4 rounded-lg shadow-md hover-card">
+                                    <div class="text-3xl mb-2">🚀</div>
+                                    <p class="font-semibold text-stone-800">Vercel</p>
+                                    <p class="text-xs text-stone-600">Platform</p>
+                                </div>
+                            </div>
+                            <span class="flow-arrow">→</span>
+                            <div class="flow-item">
+                                <div class="bg-white p-4 rounded-lg shadow-md hover-card">
+                                    <div class="text-3xl mb-2">🌐</div>
+                                    <p class="font-semibold text-stone-800">Production</p>
+                                    <p class="text-xs text-stone-600">Live URL</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="text-center">
+                            <a href="https://vercel.com/" target="_blank" class="text-indigo-600 hover:underline font-medium">Vercel (Frontend/Serverless)</a>
+                        </div>
+                        <div class="text-center">
+                            <a href="https://www.netlify.com/" target="_blank" class="text-indigo-600 hover:underline font-medium">Netlify (Static Sites)</a>
+                        </div>
+                        <div class="text-center">
+                            <a href="https://firebase.google.com/" target="_blank" class="text-indigo-600 hover:underline font-medium">Google Firebase</a>
+                        </div>
+                    </div>
+                </div>
+
+<div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-2xl font-semibold text-indigo-700 mb-4">7.4 Discovering AI Tools</h3>
+                    <p class="text-stone-600 mb-3">The AI landscape changes daily. Use these curated directories to quickly find the best tools for specific tasks, such as content generation, complex data analysis, or code review.</p>
+                    
+                    <ul class="list-disc pl-5 text-stone-700 space-y-2">
+                        <li>
+                            <a href="https://www.futuretools.io/" target="_blank" class="text-indigo-600 hover:underline font-medium">Future Tools</a>: A vast directory of AI tools, constantly updated, with categories and search functionality.
+                        </li>
+                        <li>
+                            <a href="https://www.toolify.ai/" target="_blank" class="text-indigo-600 hover:underline font-medium">Toolify AI</a>: Another comprehensive resource for discovering and comparing AI tools across various industries and applications.
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="bg-green-50 border-2 border-green-300 p-6 rounded-lg shadow-md">
+                    <h3 class="text-xl font-semibold text-green-900 mb-3">Capstone Completion Criteria</h3>
+                    <ul class="list-disc pl-5 text-sm text-green-800 space-y-2">
+                        <li>Full stack app (web or mobile) with at least 3 completed sprint stories</li>
+                        <li>GitHub repository with meaningful commit history</li>
+                        <li>Deployed to a live public URL (Vercel, Netlify, or Firebase)</li>
+                        <li>README documenting tech stack, setup, and AI tools used</li>
+                        <li>Demo-ready: you can walk through the app and explain your sprint process</li>
+                    </ul>
+                </div>
+
+</section>

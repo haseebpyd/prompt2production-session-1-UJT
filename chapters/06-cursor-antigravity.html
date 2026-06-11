@@ -1,0 +1,61 @@
+<section id="cursor-ides" class="chapter space-y-8">
+                <header>
+                    <h2 class="text-4xl font-bold text-stone-900">Chapter 6: Cursor & Antigravity</h2>
+                    <p class="text-lg text-stone-600 mt-2">Move from browser-based LLMs to AI-native IDEs. These tools understand your entire codebase and become your primary development environment for the main journey.</p>
+                </header>
+
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-2xl font-semibold text-indigo-700 mb-4">6.1 Why AI-Native IDEs?</h3>
+                    <p class="text-stone-600 mb-3">Traditional IDEs treat AI as an add-on. AI-native editors embed the LLM into every workflow — generation, editing, debugging, and refactoring — with full repository awareness.</p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                        <div class="p-4 border-l-4 border-indigo-400 bg-indigo-50 rounded-lg">
+                            <h4 class="font-semibold text-indigo-800">Cursor</h4>
+                            <p class="text-stone-700 text-sm">VS Code fork with deep AI integration. Chat, inline edit (Cmd+K), Composer for multi-file changes, and agent mode for autonomous tasks.</p>
+                            <a href="https://www.cursor.com/" target="_blank" class="text-indigo-600 hover:underline font-medium mt-2 inline-block text-sm">cursor.com</a>
+                        </div>
+                        <div class="p-4 border-l-4 border-purple-400 bg-purple-50 rounded-lg">
+                            <h4 class="font-semibold text-purple-800">Antigravity (Google)</h4>
+                            <p class="text-stone-700 text-sm">Google's agentic development environment. Strong Gemini integration, multi-agent workflows, and browser-based or IDE experiences for complex builds.</p>
+                            <a href="https://antigravity.google/" target="_blank" class="text-indigo-600 hover:underline font-medium mt-2 inline-block text-sm">antigravity.google</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-2xl font-semibold text-indigo-700 mb-4">6.2 Cursor Workflows</h3>
+                    <div class="space-y-4">
+                        <div class="bg-stone-50 p-4 rounded-lg">
+                            <h4 class="font-semibold text-stone-800">Chat (Cmd+L / Ctrl+L)</h4>
+                            <p class="text-sm text-stone-600">Ask questions about your codebase. "How does authentication work in this project?" — Cursor reads your files for context.</p>
+                        </div>
+                        <div class="bg-stone-50 p-4 rounded-lg">
+                            <h4 class="font-semibold text-stone-800">Inline Edit (Cmd+K / Ctrl+K)</h4>
+                            <p class="text-sm text-stone-600">Highlight code, describe the change. "Refactor this into a custom hook" or "Add error handling."</p>
+                        </div>
+                        <div class="bg-stone-50 p-4 rounded-lg">
+                            <h4 class="font-semibold text-stone-800">Composer / Agent Mode</h4>
+                            <p class="text-sm text-stone-600">Multi-file changes from a single prompt. "Add a settings page with dark mode toggle across the app." The agent plans, edits multiple files, and runs commands.</p>
+                        </div>
+                        <div class="bg-stone-50 p-4 rounded-lg">
+                            <h4 class="font-semibold text-stone-800">@ References</h4>
+                            <p class="text-sm text-stone-600">Use <code class="bg-stone-200 px-1 rounded">@file</code>, <code class="bg-stone-200 px-1 rounded">@folder</code>, <code class="bg-stone-200 px-1 rounded">@codebase</code> to give the AI precise context in your prompts.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-2xl font-semibold text-indigo-700 mb-4">6.3 Setup Checklist</h3>
+                    <ul class="space-y-2 text-stone-700">
+                        <li class="flex items-start gap-2"><span class="text-green-600">✓</span> Install Cursor or Antigravity</li>
+                        <li class="flex items-start gap-2"><span class="text-green-600">✓</span> Sign in and configure your preferred LLM model</li>
+                        <li class="flex items-start gap-2"><span class="text-green-600">✓</span> Open your project folder (not just a single file)</li>
+                        <li class="flex items-start gap-2"><span class="text-green-600">✓</span> Create a <code class="bg-stone-100 px-1 rounded text-sm">.cursorrules</code> or project context file describing your stack and conventions</li>
+                        <li class="flex items-start gap-2"><span class="text-green-600">✓</span> Initialize Git in your project before starting the main journey</li>
+                    </ul>
+                </div>
+
+                <div class="bg-indigo-50 border border-indigo-200 p-5 rounded-lg">
+                    <h4 class="font-bold text-indigo-900 mb-2">Practical Exercise</h4>
+                    <p class="text-sm text-indigo-800">Take your one-page app from Chapter 4. Open it in Cursor. Ask: "Split this into separate HTML, CSS, and JS files with a proper folder structure." Then: "Add a README and initialize git." This bridges your first build to the main journey.</p>
+                </div>
+            </section>

@@ -1,0 +1,143 @@
+<section id="prompting-gpts" class="chapter space-y-8">
+    <p class="chapter-breadcrumb text-sm text-stone-500"><a href="#prompting">Chapter 3: Prompt Engineering</a> / Custom GPTs &amp; Gems</p>
+    <header>
+        <h2 class="text-4xl font-bold text-stone-900">3f. Custom GPTs &amp; Gemini Gems</h2>
+        <p class="text-lg text-stone-600 mt-2">You've learned to write great prompts — now <strong>package them</strong> into reusable assistants. No code required.</p>
+        <p class="text-sm text-stone-500 mt-2">Tools: <a href="https://chatgpt.com/gpts" target="_blank" class="text-indigo-600 hover:underline">ChatGPT Custom GPTs</a> · <a href="https://gemini.google.com/gems/create" target="_blank" class="text-indigo-600 hover:underline">Gemini Gems</a></p>
+    </header>
+
+    <div class="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 p-6 rounded-lg">
+        <h3 class="text-xl font-semibold text-emerald-900 mb-2">Why This Is Your Next Step</h3>
+        <p class="text-stone-700 text-sm">A one-off prompt lives in your chat history. A Custom GPT or Gem <strong>saves your instructions, knowledge files, and tone</strong> so you (and your team) get consistent output every time. Think of it as deploying your 6-step framework as a product.</p>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-xl font-semibold text-indigo-700 mb-3">Custom GPT vs Gemini Gem</h3>
+        <div class="overflow-x-auto">
+            <table class="w-full border-collapse border border-stone-300 text-sm">
+                <thead><tr class="bg-stone-100">
+                    <th class="border border-stone-300 p-2 text-left">Aspect</th>
+                    <th class="border border-stone-300 p-2 text-left">Custom GPT (ChatGPT)</th>
+                    <th class="border border-stone-300 p-2 text-left">Gemini Gem</th>
+                </tr></thead>
+                <tbody class="text-stone-700">
+                    <tr><td class="border border-stone-300 p-2 font-semibold">Where</td><td class="border border-stone-300 p-2">chatgpt.com → Explore GPTs</td><td class="border border-stone-300 p-2">gemini.google.com → Gem manager</td></tr>
+                    <tr class="bg-stone-50"><td class="border border-stone-300 p-2 font-semibold">Account</td><td class="border border-stone-300 p-2">ChatGPT Plus, Team, or Enterprise</td><td class="border border-stone-300 p-2">Free Google account (paid tiers add capacity)</td></tr>
+                    <tr><td class="border border-stone-300 p-2 font-semibold">Core fields</td><td class="border border-stone-300 p-2">Instructions, Knowledge, Capabilities, Actions</td><td class="border border-stone-300 p-2">Name, Instructions, Knowledge files</td></tr>
+                    <tr class="bg-stone-50"><td class="border border-stone-300 p-2 font-semibold">Best for</td><td class="border border-stone-300 p-2">Sharing via link, GPT Store, API actions</td><td class="border border-stone-300 p-2">Google Workspace, Drive knowledge, free tier</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-green-500">
+        <h3 class="text-2xl font-semibold text-green-800 mb-4">Part A — Create a Custom GPT (ChatGPT)</h3>
+        <p class="text-stone-600 text-sm mb-4">Requires ChatGPT Plus or higher. Budget ~15 minutes for your first build.</p>
+        <ol class="list-decimal pl-5 text-sm text-stone-700 space-y-3">
+            <li><strong>Open the builder.</strong> Go to <a href="https://chatgpt.com/gpts" target="_blank" class="text-indigo-600 hover:underline">chatgpt.com/gpts</a> → click <strong>Create</strong> (top right).</li>
+            <li><strong>Switch to Configure.</strong> Skip the conversational "Create" tab — use <strong>Configure</strong> for direct control over every field.</li>
+            <li><strong>Name &amp; description.</strong> Use a clear functional name (e.g. "Sprint Planning Coach"). Description = one sentence on who it's for and what it does.</li>
+            <li><strong>Write Instructions.</strong> Paste your system prompt (role, task, constraints, output format). This is your 6-step framework in one block — see copy-ready template below.</li>
+            <li><strong>Conversation starters.</strong> Add 3–4 example prompts users can click: "Review my sprint backlog", "Draft acceptance criteria for this story", etc.</li>
+            <li><strong>Upload Knowledge (optional).</strong> Add PDFs, TXT, or DOCX — style guides, <code>context.md</code>, API specs. The GPT retrieves relevant chunks on demand.</li>
+            <li><strong>Configure Capabilities.</strong> Toggle only what you need: Web Browsing (live docs), Code Interpreter (data/files), Image Generation. Turn off the rest.</li>
+            <li><strong>Test in Preview.</strong> Run 5 realistic prompts in the right panel. Fix wrong tone, format, or hallucinations — edit Instructions and retest.</li>
+            <li><strong>Publish.</strong> Click <strong>Create</strong> → choose <strong>Only me</strong> (private), <strong>Anyone with a link</strong> (team), or <strong>Public</strong> (GPT Store).</li>
+        </ol>
+        <p class="text-xs text-stone-500 mt-4">Advanced (optional): <strong>Actions</strong> connect your GPT to external APIs via OpenAPI schema — skip for your first build.</p>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-blue-500">
+        <h3 class="text-2xl font-semibold text-blue-800 mb-4">Part B — Create a Gemini Gem</h3>
+        <p class="text-stone-600 text-sm mb-4">Works on gemini.google.com with a Google account. Gems sync to mobile and Workspace side panels.</p>
+        <ol class="list-decimal pl-5 text-sm text-stone-700 space-y-3">
+            <li><strong>Open Gem manager.</strong> Go to <a href="https://gemini.google.com" target="_blank" class="text-indigo-600 hover:underline">gemini.google.com</a> → left sidebar → <strong>Gem manager</strong> → <strong>New Gem</strong> (or <a href="https://gemini.google.com/gems/create" target="_blank" class="text-indigo-600 hover:underline">gemini.google.com/gems/create</a>).</li>
+            <li><strong>Name your Gem.</strong> Short and functional: "Code Review Assistant", "Meeting Notes Summarizer".</li>
+            <li><strong>Write Instructions.</strong> Define: (1) persona/role, (2) primary task, (3) output format, (4) constraints. Use the same structure as a Custom GPT.</li>
+            <li><strong>Enhance (optional).</strong> Click the magic-wand / <strong>Enhance</strong> button to expand your draft — then <em>review and trim</em> anything that changes your intent.</li>
+            <li><strong>Add Knowledge (optional).</strong> Under Knowledge → <strong>Add files</strong> from your computer or Google Drive (brand guide, past examples, SOPs).</li>
+            <li><strong>Test in Preview.</strong> Use the right panel with real input. Check format, tone, and edge cases.</li>
+            <li><strong>Save &amp; iterate.</strong> Click <strong>Save</strong>. Your Gem appears in the sidebar. Refine Instructions whenever output drifts.</li>
+        </ol>
+        <p class="text-xs text-stone-500 mt-4">Note: Gems are created on the web app; you can use them on mobile after sync. Gems don't work with Gemini Live yet.</p>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-xl font-semibold text-indigo-700 mb-3">Before You Build: Prep Checklist</h3>
+        <ul class="list-disc pl-5 text-sm text-stone-700 space-y-1">
+            <li>Pick <strong>one narrow job</strong> — "review React PRs" beats "help with coding"</li>
+            <li>Draft instructions using the <a href="#prompting" class="text-indigo-600 hover:underline">6-step framework</a> or <strong>Prompt Coach</strong> on the hub page</li>
+            <li>Gather 1–3 knowledge files (plain TXT is most reliable)</li>
+            <li>Write 3 conversation starters that show ideal usage</li>
+            <li>Define success: "Output must be markdown with Pass/Fail per criterion"</li>
+        </ul>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-xl font-semibold text-indigo-700 mb-3">Copy-Ready Instructions Template</h3>
+        <p class="text-stone-600 text-sm mb-3">Use this for <strong>both</strong> Custom GPT Instructions and Gemini Gem Instructions. Customize the bracketed parts.</p>
+        <div class="bg-stone-900 text-green-400 p-4 rounded font-mono text-xs code-block">
+            <button class="copy-code-btn bg-green-600 hover:bg-green-700 text-white rounded px-2 py-1" data-copy="# Role and Purpose
+You are an AlrightTech intern sprint planning coach. Your job is to help interns break user stories into clear tasks, acceptance criteria, and Cursor-ready prompts.
+
+# Core Behaviors
+- Ask clarifying questions if the story is vague
+- Output acceptance criteria in Given/When/Then format
+- Suggest one Cursor prompt per task (specific files, constraints, test steps)
+- Flag scope creep and suggest splitting oversized stories
+
+# Response Format
+1. Story summary (2 sentences max)
+2. Acceptance criteria (numbered list)
+3. Task breakdown (checkbox list)
+4. Cursor prompt per task (in fenced code blocks)
+
+# Constraints
+- Do not invent features not in the story
+- Prefer Next.js, TypeScript, Tailwind unless told otherwise
+- Keep responses under 500 words unless user asks for detail
+
+# Knowledge Usage
+When knowledge files are attached, follow AlrightTech sprint templates and naming conventions from those docs.">Copy</button>
+            <pre class="whitespace-pre-wrap mt-8"># Role and Purpose
+You are an AlrightTech intern sprint planning coach...
+
+# Core Behaviors
+- Ask clarifying questions if the story is vague
+- Output acceptance criteria in Given/When/Then format
+...
+
+# Response Format / Constraints / Knowledge Usage
+[see full template via Copy button]</pre>
+        </div>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-xl font-semibold text-indigo-700 mb-3">Intern Project Idea</h3>
+        <p class="text-stone-700 text-sm mb-3">Build one assistant for your capstone workflow:</p>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+            <div class="bg-stone-50 p-4 rounded-lg border border-stone-200">
+                <strong>Custom GPT: "My Code Reviewer"</strong>
+                <p class="text-stone-600 mt-1">Upload your team's style guide + paste review checklist in Instructions. Starters: "Review this PR diff", "Check for security issues".</p>
+            </div>
+            <div class="bg-stone-50 p-4 rounded-lg border border-stone-200">
+                <strong>Gem: "Daily Standup Writer"</strong>
+                <p class="text-stone-600 mt-1">Instructions: turn bullet notes into a structured standup (Yesterday / Today / Blockers). Upload past standup examples as Knowledge.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-emerald-50 border border-emerald-200 p-5 rounded-lg">
+        <h4 class="font-bold text-emerald-900 mb-2">Checkpoint — Custom Assistants</h4>
+        <ul class="list-disc pl-5 text-sm text-emerald-800 space-y-1">
+            <li>Created <strong>one Custom GPT</strong> or <strong>one Gemini Gem</strong> with clear Instructions</li>
+            <li>Added at least <strong>one knowledge file</strong> or conversation starter</li>
+            <li>Tested with <strong>3 real prompts</strong> and refined Instructions once</li>
+            <li>Shared the link with a teammate (or kept private with a documented use case)</li>
+        </ul>
+    </div>
+
+    <div class="bg-stone-100 p-4 rounded-lg text-sm">
+        <a href="#prompting" class="text-indigo-600 hover:underline font-medium">← Back to Chapter 3 hub</a>
+    </div>
+</section>

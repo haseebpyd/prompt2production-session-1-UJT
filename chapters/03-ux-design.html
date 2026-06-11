@@ -1,0 +1,67 @@
+<section id="prompting-ux" class="chapter space-y-8">
+    <p class="chapter-breadcrumb text-sm text-stone-500"><a href="#prompting">Chapter 3: Prompt Engineering</a> / UX Design</p>
+    <header>
+        <h2 class="text-4xl font-bold text-stone-900">3c. UX Design by Prompting</h2>
+        <p class="text-lg text-stone-600 mt-2">Treat prompts like a mini design spec — clarity drives output quality in UXPilot.</p>
+        <p class="text-sm text-stone-500 mt-2">Source: <a href="https://github.com/panaversity/learn-agentic-ai-from-low-code-to-code/tree/main/03_prompt_engineering/ux_design" target="_blank" class="text-indigo-600 hover:underline">Panaversity — UX Design</a></p>
+    </header>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-xl font-semibold text-indigo-700 mb-3">Tool: UXPilot</h3>
+        <p class="text-stone-700 text-sm mb-3">UXPilot is an AI design tool (Figma/FigJam plugin) that generates production-ready UI from structured prompts. Prompt precision directly influences design quality.</p>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+            <div class="border border-stone-200 p-4 rounded-lg">
+                <h4 class="font-semibold text-stone-800 mb-1">One-shot mode</h4>
+                <p class="text-stone-600">Rapid ideation — broad brief, explore layouts fast. Good for brainstorming.</p>
+            </div>
+            <div class="border border-stone-200 p-4 rounded-lg">
+                <h4 class="font-semibold text-stone-800 mb-1">Step-by-step mode</h4>
+                <p class="text-stone-600">Detailed brief with brand colors, metrics, sample data — pixel-level control.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-xl font-semibold text-indigo-700 mb-3">Key Insight</h3>
+        <p class="text-stone-700 text-sm">The quality of your prompt directly influences the quality of your design. Include:</p>
+        <ul class="list-disc pl-5 text-sm text-stone-600 mt-2 space-y-1">
+            <li><strong>Users</strong> — who uses this screen?</li>
+            <li><strong>Metrics / data</strong> — what numbers or KPIs to show?</li>
+            <li><strong>Layout</strong> — sidebar, cards, tables, charts?</li>
+            <li><strong>Brand</strong> — colors, typography, tone</li>
+            <li><strong>Visual references</strong> — wireframes or competitor screenshots</li>
+        </ul>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-xl font-semibold text-indigo-700 mb-3">Example: Operations Dashboard Brief</h3>
+        <div class="bg-stone-900 text-green-400 p-4 rounded font-mono text-xs code-block">
+            <button class="copy-code-btn bg-green-600 hover:bg-green-700 text-white rounded px-2 py-1" data-copy="Design a Zepto-style quick-commerce operations dashboard for store managers.
+
+Users: Regional ops managers monitoring 50+ dark stores.
+
+Layout: Left sidebar nav. Main area: KPI cards (orders/hour, delivery time, stock-outs). Below: sortable table of underperforming stores. Top-right: date range filter.
+
+Brand: Purple primary (#5B21B6), white cards, clean sans-serif. Mobile-responsive tablet view.
+
+Data: Use realistic sample numbers. Highlight alerts in amber/red.
+
+Style: Modern SaaS, high information density but not cluttered.">Copy</button>
+            <pre class="whitespace-pre-wrap mt-8">Design a quick-commerce operations dashboard for store managers.
+
+Users: Ops managers, 50+ locations.
+Layout: Sidebar + KPI cards + alert table + date filter.
+Brand: Purple #5B21B6, white cards, sans-serif.
+Include realistic sample data. Mobile-responsive.</pre>
+        </div>
+    </div>
+
+    <div class="bg-indigo-50 border border-indigo-200 p-4 rounded-lg text-sm">
+        <p class="text-stone-700"><strong>Advanced:</strong> UXPilot FigJam plugin AI Tools → Custom Prompt does not consume tokens — ideal for early ideation.</p>
+        <p class="mt-2"><a href="https://github.com/panaversity/learn-agentic-ai-from-low-code-to-code/blob/main/03_prompt_engineering/ux_design/uxpilot_workflow_tutorial.md" target="_blank" class="text-indigo-600 hover:underline">Full UX Pilot End-to-End Workflow →</a></p>
+    </div>
+
+    <div class="bg-stone-100 p-4 rounded-lg text-sm">
+        <a href="#prompting" class="text-indigo-600 hover:underline font-medium">← Back to Chapter 3 hub</a>
+    </div>
+</section>

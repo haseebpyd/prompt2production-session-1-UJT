@@ -1,0 +1,89 @@
+<section id="glossary" class="chapter space-y-8">
+                <header>
+                    <h2 class="text-4xl font-bold text-stone-900">Chapter 10: Glossary of AI Development Terms</h2>
+                    <p class="text-lg text-stone-600 mt-2">Quickly look up definitions for key concepts from the session.</p>
+                </header>
+
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <input type="text" id="glossary-search" class="w-full rounded-md border-stone-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-3 mb-6" placeholder="Search Glossary terms...">
+                    
+                    <ul id="glossary-list" class="space-y-4 divide-y divide-stone-200">
+                        <li data-term="Transformer" class="pt-4">
+                            <h4 class="font-semibold text-xl text-stone-800">Transformer Architecture</h4>
+                            <p class="text-stone-600">The neural network architecture that forms the backbone of all modern LLMs (like GPT and Gemini). It relies on the Self-Attention mechanism.</p>
+                        </li>
+                        <li data-term="Self-Attention" class="pt-4">
+                            <h4 class="font-semibold text-xl text-stone-800">Self-Attention Mechanism</h4>
+                            <p class="text-stone-600">A process within the Transformer model that allows it to weigh the importance of other words in the input text to determine the meaning of a single word, crucial for understanding context.</p>
+                        </li>
+                        <li data-term="Agentic AI" class="pt-4">
+                            <h4 class="font-semibold text-xl text-stone-800">Agentic AI (Agents)</h4>
+                            <p class="text-stone-600">Autonomous AI systems that can independently set goals, create a multi-step plan, execute actions (often using external tools), and iterate based on results.</p>
+                        </li>
+                        <li data-term="Hallucination" class="pt-4">
+                            <h4 class="font-semibold text-xl text-stone-800">Hallucination (AI)</h4>
+                            <p class="text-stone-600">A phenomenon where an LLM generates output that is false, nonsensical, or unfaithful to the source data, yet presented confidently.</p>
+                        </li>
+                        <li data-term="Chain of Thought" class="pt-4">
+                            <h4 class="font-semibold text-xl text-stone-800">Chain-of-Thought (CoT) Prompting</h4>
+                            <p class="text-stone-600">A technique where the user prompts the LLM to output its reasoning process before giving the final answer (e.g., "Think step-by-step"). This improves accuracy.</p>
+                        </li>
+                        <li data-term="RAG" class="pt-4">
+                            <h4 class="font-semibold text-xl text-stone-800">Retrieval-Augmented Generation (RAG)</h4>
+                            <p class="text-stone-600">A technique that grounds the LLM's response in external, verified knowledge bases (e.g., a company's internal documents) to reduce hallucinations and ensure up-to-date information.</p>
+                        </li>
+                        <li data-term="AI" class="pt-4">
+                            <h4 class="font-semibold text-xl text-stone-800">AI (Artificial Intelligence)</h4>
+                            <p class="text-stone-600">The science and engineering of making intelligent machines, especially intelligent computer programs.</p>
+                        </li>
+                        <li data-term="Agent Loop" class="pt-4">
+                            <h4 class="font-semibold text-xl text-stone-800">Agent Loop (P-R-A)</h4>
+                            <p class="text-stone-600">The core autonomous cycle of an Agentic AI: Perceive, Reason/Plan, and Act/Execute.</p>
+                        </li>
+                        <li data-term="Continuous Deployment" class="pt-4">
+                            <h4 class="font-semibold text-xl text-stone-800">Continuous Deployment (CD)</h4>
+                            <p class="text-stone-600">The automated process of taking code changes from a repository (like GitHub) and instantly building and releasing them to a live environment (cloud hosting).</p>
+                        </li>
+                        <li data-term="Deep Learning" class="pt-4">
+                            <h4 class="font-semibold text-xl text-stone-800">Deep Learning (DL)</h4>
+                            <p class="text-stone-600">A subfield of Machine Learning that uses neural networks with multiple hidden layers (deep neural networks) to automatically discover features from raw data.</p>
+                        </li>
+                        <li data-term="Deployment" class="pt-4">
+                            <h4 class="font-semibold text-xl text-stone-800">Deployment</h4>
+                            <p class="text-stone-600">The process of making a software application accessible to users on a global scale, typically by placing it on a public web server (the Cloud).</p>
+                        </li>
+                        <li data-term="Explainability" class="pt-4">
+                            <h4 class="font-semibold text-xl text-stone-800">Explainability (XAI)</h4>
+                            <p class="text-stone-600">The ability to articulate and demonstrate how and why an AI model reached a specific decision or output.</p>
+                        </li>
+                        <li data-term="Generative AI" class="pt-4">
+                            <h4 class="font-semibold text-xl text-stone-800">Generative AI (GenAI)</h4>
+                            <p class="text-stone-600">A type of AI that can create new content, such as text, code, images, or video, often based on patterns learned from vast datasets.</p>
+                        </li>
+                        <li data-term="Localhost" class="pt-4">
+                            <h4 class="font-semibold text-xl text-stone-800">Localhost</h4>
+                            <p class="text-stone-600">The local computer or machine being used for development, where an application is only accessible to the developer.</p>
+                        </li>
+                        <li data-term="LLM" class="pt-4">
+                            <h4 class="font-semibold text-xl text-stone-800">LLM (Large Language Model)</h4>
+                            <p class="text-stone-600">A deep learning model, often based on the Transformer architecture, trained on massive amounts of text to understand, summarize, generate, and predict human language.</p>
+                        </li>
+                        <li data-term="Machine Learning" class="pt-4">
+                            <h4 class="font-semibold text-xl text-stone-800">Machine Learning (ML)</h4>
+                            <p class="text-stone-600">A field of AI focused on developing systems that can learn from data without being explicitly programmed.</p>
+                        </li>
+                        <li data-term="Prompt Engineering" class="pt-4">
+                            <h4 class="font-semibold text-xl text-stone-800">Prompt Engineering</h4>
+                            <p class="text-stone-600">The discipline of structuring the input (prompt) given to an LLM to achieve a desired, predictable, and high-quality output.</p>
+                        </li>
+                        <li data-term="Responsible AI" class="pt-4">
+                            <h4 class="font-semibold text-xl text-stone-800">Responsible AI</h4>
+                            <p class="text-stone-600">A set of principles and practices focused on developing and deploying AI systems ethically, fairly, transparently, and safely.</p>
+                        </li>
+                        <li data-term="Zero-Shot" class="pt-4">
+                            <h4 class="font-semibold text-xl text-stone-800">Zero-Shot Prompting</h4>
+                            <p class="text-stone-600">Providing a prompt to an LLM with no examples of the desired input/output format, relying entirely on the model's pre-trained general knowledge.</p>
+                        </li>
+                    </ul>
+                </div>
+            </section>

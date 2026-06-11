@@ -1,0 +1,86 @@
+<section id="prompting-ui" class="chapter space-y-8">
+    <p class="chapter-breadcrumb text-sm text-stone-500"><a href="#prompting">Chapter 3: Prompt Engineering</a> / UI Development</p>
+    <header>
+        <h2 class="text-4xl font-bold text-stone-900">3d. UI Development by Prompting</h2>
+        <p class="text-lg text-stone-600 mt-2">Build full-stack apps with Lovable — plan first, one feature per prompt, test after each build.</p>
+        <p class="text-sm text-stone-500 mt-2">Source: <a href="https://github.com/panaversity/learn-agentic-ai-from-low-code-to-code/tree/main/03_prompt_engineering/ui_development" target="_blank" class="text-indigo-600 hover:underline">Panaversity — UI Development</a> · Tool: <a href="https://lovable.dev" target="_blank" class="text-indigo-600 hover:underline">lovable.dev</a></p>
+    </header>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-xl font-semibold text-indigo-700 mb-3">Workflow Highlights</h3>
+        <ol class="list-decimal pl-5 text-sm text-stone-700 space-y-2">
+            <li><strong>Plan MVP first</strong> — ask Lovable to outline features before coding</li>
+            <li><strong>One feature per prompt</strong> — smaller changes = fewer regressions</li>
+            <li><strong>Test after each build</strong> — catch issues early</li>
+            <li><strong>Chat mode meta-prompting</strong> — "Write the prompt for me to add dark mode"</li>
+            <li><strong>Project Knowledge</strong> — persistent rules (dark mode, clean UI, stack preferences)</li>
+        </ol>
+        <p class="text-sm text-stone-600 mt-3">Stack path: Lovable → GitHub sync → Supabase (auth/data) → Publish</p>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-xl font-semibold text-indigo-700 mb-3">Copy-Ready Prompts</h3>
+        <div class="space-y-3">
+            <div class="bg-white rounded-lg shadow-md overflow-hidden border border-stone-200">
+                <button class="accordion-button flex justify-between items-center w-full p-4 text-left font-semibold text-indigo-800 bg-indigo-50 hover:bg-indigo-100 focus:outline-none">
+                    Landing page
+                </button>
+                <div class="accordion-content p-4">
+                    <div class="bg-stone-900 text-green-400 p-3 rounded font-mono text-xs code-block">
+                        <button class="copy-code-btn bg-green-600 hover:bg-green-700 text-white rounded px-2 py-1" data-copy="Create a modern landing page for a SaaS product called 'CalcFlow' — a calculator app with history tracking.
+
+Hero: headline, subheadline, CTA button 'Get Started Free'.
+Features section: 3 cards (Fast calculations, History saved, Export results).
+Footer: simple links. Use a clean indigo/white color scheme. Mobile responsive.">Copy</button>
+                        <pre class="whitespace-pre-wrap mt-8 text-xs">Create a modern landing page for 'CalcFlow' — calculator app with history.
+
+Hero + CTA, 3 feature cards, footer. Indigo/white, mobile responsive.</pre>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-lg shadow-md overflow-hidden border border-stone-200">
+                <button class="accordion-button flex justify-between items-center w-full p-4 text-left font-semibold text-indigo-800 bg-indigo-50 hover:bg-indigo-100 focus:outline-none">
+                    Dark / light toggle
+                </button>
+                <div class="accordion-content p-4">
+                    <div class="bg-stone-900 text-green-400 p-3 rounded font-mono text-xs code-block">
+                        <button class="copy-code-btn bg-green-600 hover:bg-green-700 text-white rounded px-2 py-1" data-copy="Add a dark/light mode toggle in the header. Persist the user's preference in localStorage. Default to system preference on first visit. Ensure all existing components look good in both themes — adjust backgrounds, text colors, and borders accordingly.">Copy</button>
+                        <pre class="whitespace-pre-wrap mt-8 text-xs">Add dark/light toggle in header. Persist in localStorage.
+Respect system preference on first visit. Fix all component colors.</pre>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-lg shadow-md overflow-hidden border border-stone-200">
+                <button class="accordion-button flex justify-between items-center w-full p-4 text-left font-semibold text-indigo-800 bg-indigo-50 hover:bg-indigo-100 focus:outline-none">
+                    Auth + protected route + history
+                </button>
+                <div class="accordion-content p-4">
+                    <div class="bg-stone-900 text-green-400 p-3 rounded font-mono text-xs code-block">
+                        <button class="copy-code-btn bg-green-600 hover:bg-green-700 text-white rounded px-2 py-1" data-copy="Add Supabase authentication (email/password sign up and login).
+
+Protect the /calculator route — redirect unauthenticated users to /login.
+Save each calculation to a 'calculations' table linked to the user.
+Show calculation history on a /history page (expression, result, timestamp).
+Add logout button in header when authenticated.">Copy</button>
+                        <pre class="whitespace-pre-wrap mt-8 text-xs">Supabase auth. Protect /calculator.
+Save calculations per user. /history page with timestamps. Logout in header.</pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-xl font-semibold text-indigo-700 mb-3">Debugging Tips</h3>
+        <ul class="list-disc pl-5 text-sm text-stone-700 space-y-1">
+            <li><strong>History rollback</strong> — revert to last working version in Lovable</li>
+            <li><strong>Paste exact errors</strong> — console messages help Lovable fix faster</li>
+            <li><strong>Review migrations</strong> — check Supabase schema changes before accepting</li>
+            <li><strong>Project Knowledge</strong> — add "always use TypeScript strict mode" once, not every prompt</li>
+        </ul>
+    </div>
+
+    <div class="bg-stone-100 p-4 rounded-lg text-sm">
+        <a href="#prompting" class="text-indigo-600 hover:underline font-medium">← Back to Chapter 3 hub</a>
+    </div>
+</section>

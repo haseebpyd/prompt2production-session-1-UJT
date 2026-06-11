@@ -1,0 +1,215 @@
+/* Base styling for Inter font */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        /* Chapter container (one chapter loaded at a time via app.js) */
+        .chapter {
+            animation: fadeIn 0.2s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .nav-link {
+            transition: all 0.2s ease;
+        }
+        .nav-link.active {
+            background-color: #4f46e5; /* indigo-600 */
+            color: #ffffff;
+            font-weight: 600;
+        }
+        .nav-link:not(.active):hover {
+            background-color: #eef2ff; /* indigo-50 */
+            color: #312e81; /* indigo-900 */
+        }
+        .nav-sublink {
+            transition: all 0.2s ease;
+            font-size: 0.75rem;
+            padding-left: 1.5rem;
+        }
+        .nav-sublink.active {
+            background-color: #e0e7ff;
+            color: #4338ca;
+            font-weight: 600;
+        }
+        .nav-sublink:not(.active):hover {
+            background-color: #f5f5f4;
+            color: #312e81;
+        }
+        .nav-parent-active:not(.active) {
+            background-color: #eef2ff;
+            color: #4338ca;
+            font-weight: 600;
+        }
+        .chapter-breadcrumb a {
+            color: #4f46e5;
+        }
+        .chapter-breadcrumb a:hover {
+            text-decoration: underline;
+        }
+
+        /* Required Chart Container Styling */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 400px;
+        }
+        
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 350px;
+            }
+        }
+
+        /* Accordion styles */
+        .accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+        .accordion-button.active + .accordion-content {
+            max-height: 1000px; /* Arbitrary large value */
+        }
+        
+        /* Simple icon for accordion button */
+        .accordion-button::after {
+            content: '\25BC'; /* Down arrow */
+            float: right;
+            transform: scale(0.8);
+            transition: transform 0.2s ease;
+        }
+        .accordion-button.active::after {
+            transform: scale(0.8) rotate(180deg);
+        }
+        
+        /* Custom Timeline Styling */
+        .timeline {
+            position: relative;
+            padding: 10px 0;
+            margin: 0 10px;
+        }
+        .timeline::before {
+            content: '';
+            position: absolute;
+            width: 4px;
+            background-color: #e5e7eb; /* stone-200 */
+            top: 0;
+            bottom: 0;
+            left: 1rem; /* 16px from left */
+            margin-left: -2px;
+        }
+        @media (min-width: 768px) {
+             .timeline::before {
+                left: 50%;
+            }
+            .timeline-item:nth-child(odd) {
+                text-align: right;
+            }
+        }
+
+        .timeline-item {
+            padding: 10px 0;
+            position: relative;
+            min-height: 70px;
+        }
+
+        .timeline-item-content {
+            background-color: white;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+        }
+        
+        .timeline-dot {
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background-color: #4f46e5; /* indigo-600 */
+            border: 3px solid #f5f5f4; /* stone-100 */
+            z-index: 10;
+            left: 1rem; 
+            transform: translateX(-50%);
+        }
+
+        /* Icon styling within the timeline dot */
+        .timeline-dot-icon {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 0.9rem; /* Adjust size as needed */
+            color: white; /* Color of the icon */
+        }
+
+        @media (min-width: 768px) {
+            .timeline-item-content {
+                width: 45%; /* Half width */
+            }
+
+            .timeline-item:nth-child(odd) .timeline-item-content {
+                float: left;
+            }
+
+            .timeline-item:nth-child(even) .timeline-item-content {
+                float: right;
+            }
+
+            .timeline-dot {
+                left: 50%;
+                transform: translateX(-50%);
+            }
+            
+            .timeline-item:nth-child(odd) {
+                padding-right: 3rem; /* Space for the dot */
+            }
+
+            .timeline-item:nth-child(even) {
+                padding-left: 3rem; /* Space for the dot */
+            }
+        }
+
+        /* Interactive table and card styles */
+        .hover-card {
+            transition: all 0.3s ease;
+        }
+        .hover-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Code copy button styles */
+        .code-block {
+            position: relative;
+        }
+        .copy-code-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            padding: 4px 8px;
+            font-size: 0.75rem;
+        }
+
+        /* Deployment flow animation */
+        .deployment-flow {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        .flow-item {
+            flex: 1;
+            min-width: 120px;
+            text-align: center;
+            position: relative;
+        }
+        .flow-arrow {
+            font-size: 1.5rem;
+            color: #6366f1;
+        }

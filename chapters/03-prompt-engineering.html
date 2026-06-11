@@ -1,0 +1,380 @@
+<section id="prompting" class="chapter space-y-8">
+                <header>
+                    <h2 class="text-4xl font-bold text-stone-900">Chapter 3: Prompt Engineering</h2>
+                    <p class="text-lg text-stone-600 mt-2">Prompt engineering is the core skill of the AI-augmented developer. This chapter covers paradigms, advanced strategies (Chain of Thought, ReAct), the Prompt Coach, the 6-step framework, specialized topics — and packaging your prompts into <strong>Custom GPTs</strong> and <strong>Gemini Gems</strong>.</p>
+                    <p class="text-sm text-stone-500 mt-2">Adapted in part from <a href="https://github.com/panaversity/learn-agentic-ai-from-low-code-to-code/tree/main/03_prompt_engineering" target="_blank" class="text-indigo-600 hover:underline">Panaversity — Prompt Engineering</a></p>
+                </header>
+
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-2xl font-semibold text-indigo-700 mb-4">3.1 The Modern AI Tools Ecosystem</h3>
+                    <p class="text-stone-600 mb-4">Understanding the landscape of AI tools available for Computer Science students and professionals.</p>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="bg-gradient-to-br from-purple-50 to-purple-100 p-5 rounded-lg border border-purple-200 hover-card">
+                            <div class="flex items-start mb-3">
+                                <span class="text-3xl mr-3">💬</span>
+                                <div>
+                                    <h4 class="text-lg font-bold text-purple-900 mb-1">Text (LLMs)</h4>
+                                    <p class="text-sm text-purple-800 font-medium">GPT-4o, Gemini Advanced, Claude 3</p>
+                                </div>
+                            </div>
+                            <div class="bg-white p-3 rounded border border-purple-200">
+                                <p class="text-xs font-semibold text-purple-900 mb-1">Core Function for CS:</p>
+                                <p class="text-xs text-purple-700">Research synthesis, generating documentation, ideation, designing API specifications</p>
+                            </div>
+                        </div>
+
+                        <div class="bg-gradient-to-br from-blue-50 to-blue-100 p-5 rounded-lg border border-blue-200 hover-card">
+                            <div class="flex items-start mb-3">
+                                <span class="text-3xl mr-3">💻</span>
+                                <div>
+                                    <h4 class="text-lg font-bold text-blue-900 mb-1">Coding</h4>
+                                    <p class="text-sm text-blue-800 font-medium">Cursor, GitHub Copilot, Gemini Code Assist</p>
+                                </div>
+                            </div>
+                            <div class="bg-white p-3 rounded border border-blue-200">
+                                <p class="text-xs font-semibold text-blue-900 mb-1">Core Function for CS:</p>
+                                <p class="text-xs text-blue-700">Code generation, automated debugging, large-scale refactoring, writing unit tests</p>
+                            </div>
+                        </div>
+
+                        <div class="bg-gradient-to-br from-green-50 to-green-100 p-5 rounded-lg border border-green-200 hover-card">
+                            <div class="flex items-start mb-3">
+                                <span class="text-3xl mr-3">🤖</span>
+                                <div>
+                                    <h4 class="text-lg font-bold text-green-900 mb-1">Agents/Orchestration</h4>
+                                    <p class="text-sm text-green-800 font-medium">AutoGen, CrewAI</p>
+                                </div>
+                            </div>
+                            <div class="bg-white p-3 rounded border border-green-200">
+                                <p class="text-xs font-semibold text-green-900 mb-1">Core Function for CS:</p>
+                                <p class="text-xs text-green-700">Building self-executing workflows (e.g., a documentation agent that researches, writes, and formats)</p>
+                            </div>
+                        </div>
+
+                        <div class="bg-gradient-to-br from-orange-50 to-orange-100 p-5 rounded-lg border border-orange-200 hover-card">
+                            <div class="flex items-start mb-3">
+                                <span class="text-3xl mr-3">🎨</span>
+                                <div>
+                                    <h4 class="text-lg font-bold text-orange-900 mb-1">Images</h4>
+                                    <p class="text-sm text-orange-800 font-medium">Midjourney, DALL-E, Stable Diffusion</p>
+                                </div>
+                            </div>
+                            <div class="bg-white p-3 rounded border border-orange-200">
+                                <p class="text-xs font-semibold text-orange-900 mb-1">Core Function for CS:</p>
+                                <p class="text-xs text-orange-700">Creating placeholder art, generating UI mockups, creating synthetic data for computer vision training</p>
+                            </div>
+                        </div>
+
+                        <div class="bg-gradient-to-br from-red-50 to-red-100 p-5 rounded-lg border border-red-200 hover-card">
+                            <div class="flex items-start mb-3">
+                                <span class="text-3xl mr-3">🎥</span>
+                                <div>
+                                    <h4 class="text-lg font-bold text-red-900 mb-1">Video</h4>
+                                    <p class="text-sm text-red-800 font-medium">Runway, Pika, Sora</p>
+                                </div>
+                            </div>
+                            <div class="bg-white p-3 rounded border border-red-200">
+                                <p class="text-xs font-semibold text-red-900 mb-1">Core Function for CS:</p>
+                                <p class="text-xs text-red-700">Generating video content, demonstrations, synthetic data, product marketing materials</p>
+                            </div>
+                        </div>
+
+                        <div class="bg-gradient-to-br from-indigo-50 to-indigo-100 p-5 rounded-lg border border-indigo-200 hover-card">
+                            <div class="flex items-start mb-3">
+                                <span class="text-3xl mr-3">🎤</span>
+                                <div>
+                                    <h4 class="text-lg font-bold text-indigo-900 mb-1">Voice</h4>
+                                    <p class="text-sm text-indigo-800 font-medium">ElevenLabs, Murf, Speechify</p>
+                                </div>
+                            </div>
+                            <div class="bg-white p-3 rounded border border-indigo-200">
+                                <p class="text-xs font-semibold text-indigo-900 mb-1">Core Function for CS:</p>
+                                <p class="text-xs text-indigo-700">Speech-to-text, text-to-speech, voice cloning, voice assistants, accessibility features</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-2xl font-semibold text-indigo-700 mb-4">3.2 Key Prompting Paradigms</h3>
+                    <p class="text-stone-600 mb-4">Different approaches to structuring prompts for optimal results with LLMs.</p>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div class="bg-indigo-50 p-4 rounded-lg border border-indigo-200 hover-card">
+                            <h4 class="font-bold text-indigo-900 mb-2">Zero-Shot Prompting</h4>
+                            <p class="text-sm text-stone-700 mb-2"><strong>Description:</strong> Providing no examples. The model uses its general knowledge.</p>
+                            <p class="text-sm text-stone-600 italic"><strong>Use Case:</strong> Simple summarization or factual questions.</p>
+                        </div>
+                        <div class="bg-indigo-50 p-4 rounded-lg border border-indigo-200 hover-card">
+                            <h4 class="font-bold text-indigo-900 mb-2">Few-Shot Prompting</h4>
+                            <p class="text-sm text-stone-700 mb-2"><strong>Description:</strong> Providing a few examples of desired input/output pairs before the main task.</p>
+                            <p class="text-sm text-stone-600 italic"><strong>Use Case:</strong> Guiding the model to a very specific output format (e.g., JSON or specific class structure).</p>
+                        </div>
+                        <div class="bg-indigo-50 p-4 rounded-lg border border-indigo-200 hover-card">
+                            <h4 class="font-bold text-indigo-900 mb-2">Role-Based Prompting</h4>
+                            <p class="text-sm text-stone-700 mb-2"><strong>Description:</strong> Assigning a persona to the model.</p>
+                            <p class="text-sm text-stone-600 italic"><strong>Use Case:</strong> "Act as a Senior DevOps Engineer" to get infrastructure recommendations.</p>
+                        </div>
+                        <div class="bg-indigo-50 p-4 rounded-lg border border-indigo-200 hover-card">
+                            <h4 class="font-bold text-indigo-900 mb-2">Contextual Prompting</h4>
+                            <p class="text-sm text-stone-700 mb-2"><strong>Description:</strong> Providing specific documents or code snippets the model must reference.</p>
+                            <p class="text-sm text-stone-600 italic"><strong>Use Case:</strong> Debugging a function by pasting the code and asking "Why is this crashing?".</p>
+                        </div>
+                        <div class="bg-purple-50 p-4 rounded-lg border border-purple-200 hover-card">
+                            <h4 class="font-bold text-purple-900 mb-2">Temperature & Creativity Control</h4>
+                            <p class="text-sm text-stone-700 mb-2"><strong>Description:</strong> Adjusting randomness/creativity of responses (0.0 = deterministic, 1.0 = very creative).</p>
+                            <p class="text-sm text-stone-600 italic"><strong>Use Case:</strong> Low temp (0.2) for code generation, high temp (0.8) for creative writing.</p>
+                        </div>
+                        <div class="bg-orange-50 p-4 rounded-lg border border-orange-200 hover-card">
+                            <h4 class="font-bold text-orange-900 mb-2">Reactive Prompting (Iterative Refinement)</h4>
+                            <p class="text-sm text-stone-700 mb-2"><strong>Description:</strong> Starting with basic prompt, then refining based on output in follow-up messages.</p>
+                            <p class="text-sm text-stone-600 italic"><strong>Use Case:</strong> Build complex solutions step-by-step through conversation and feedback loops.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-2xl font-semibold text-indigo-700 mb-4">3.3 Prompt vs Context Engineering</h3>
+                    <p class="text-stone-600 mb-4"><strong>Prompt engineering</strong> is <em>how you ask</em>. <strong>Context engineering</strong> is <em>what you show</em> the model — RAG, docs, tools, memory. Both layers matter in production AI apps and agents.</p>
+                    <div class="bg-indigo-50 border border-indigo-200 p-4 rounded-lg flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <p class="text-sm text-stone-700"><strong>Teaser:</strong> Karpathy's analogy — LLM = CPU, context window = RAM. Learn the six agent components and Anthropic's practical checklist.</p>
+                        <a href="#prompting-context" class="inline-flex shrink-0 items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">Read full guide →</a>
+                    </div>
+                </div>
+
+                <div class="bg-gradient-to-r from-purple-50 to-indigo-50 p-6 rounded-lg shadow-md border border-purple-200">
+                    <h3 class="text-2xl font-semibold text-indigo-800 mb-2">3.4 The Prompt Coach</h3>
+                    <p class="text-stone-700 mb-4">Not sure how to phrase a request? Paste this <strong>meta-prompt</strong> into any LLM first, then drop in your rough idea. The model rewrites it into a polished, structured prompt.</p>
+                    <div class="bg-stone-900 text-green-400 p-4 rounded font-mono text-sm code-block">
+                        <button class="copy-code-btn bg-purple-600 hover:bg-purple-700 text-white rounded px-2 py-1" data-copy="You are my Prompt Coach. I will give you a rough or unclear prompt. Your task is to:
+1. Clarify it
+2. Add missing context
+3. Structure it for best results
+4. Suggest 2–3 alternative versions (different styles: simple, detailed, structured)
+
+Here's my rough prompt: [INSERT YOUR PROMPT HERE]">Copy</button>
+                        <pre class="whitespace-pre-wrap text-xs mt-8">You are my Prompt Coach. I will give you a rough or unclear prompt.
+Your task is to:
+1. Clarify it
+2. Add missing context
+3. Structure it for best results
+4. Suggest 2–3 alternative versions (simple, detailed, structured)
+
+Here's my rough prompt: [INSERT YOUR PROMPT HERE]</pre>
+                    </div>
+                    <p class="text-xs text-stone-500 mt-3"><strong>Try it:</strong> Rough prompt = "make my app faster" → Coach returns a structured prompt with Role, Task, Constraints, and measurable goals.</p>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-2xl font-semibold text-indigo-700 mb-4">3.5 Advanced Prompting Strategies</h3>
+                    <p class="text-stone-600 mb-6">These techniques matter most for debugging, agents, and multi-step dev work. Each includes <strong>one practical example</strong>.</p>
+
+                    <div class="space-y-6">
+
+                        <div class="border border-stone-200 rounded-lg overflow-hidden">
+                            <div class="bg-purple-100 px-4 py-2 font-bold text-purple-900">Chain of Thought (CoT)</div>
+                            <div class="p-4">
+                                <p class="text-sm text-stone-700 mb-3">Ask the model to <strong>reason step-by-step</strong> before giving the final answer. Improves accuracy on logic, math, and debugging.</p>
+                                <p class="text-xs font-semibold text-stone-500 mb-1">When to use:</p>
+                                <p class="text-sm text-stone-600 mb-3">Bug diagnosis, algorithm design, complex refactors. Use temperature 0 for consistent reasoning.</p>
+                                <div class="bg-stone-100 p-3 rounded font-mono text-xs text-stone-800">
+                                    <p class="font-sans font-semibold text-stone-600 mb-2">Example — debug a React hook:</p>
+                                    This useEffect runs infinitely. Think step by step: (1) identify the dependency array, (2) explain why re-renders trigger, (3) propose a fix with code.<br><br>
+                                    <code>[paste your useEffect code here]</code><br><br>
+                                    Let's think step by step.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="border border-stone-200 rounded-lg overflow-hidden">
+                            <div class="bg-cyan-100 px-4 py-2 font-bold text-cyan-900">ReAct (Reasoning + Acting)</div>
+                            <div class="p-4">
+                                <p class="text-sm text-stone-700 mb-3">Interleave <strong>Thought → Action → Observation</strong> loops. The model plans, calls a tool (search, terminal, file read), reads the result, and continues. This is how Cursor Agent and most AI agents work under the hood.</p>
+                                <p class="text-xs font-semibold text-stone-500 mb-1">When to use:</p>
+                                <p class="text-sm text-stone-600 mb-3">Tasks needing live data, multi-step verification, or tool use (API docs lookup, run tests, search codebase).</p>
+                                <div class="bg-stone-100 p-3 rounded font-mono text-xs text-stone-800 whitespace-pre-wrap">Example — find why API returns 401:
+
+Thought: I need to trace the auth flow from the login route to the protected endpoint.
+Action: Read src/lib/auth.ts and src/middleware.ts
+Observation: [model reads files]
+Thought: Middleware checks JWT but cookie name differs from login handler.
+Action: Propose a patch that aligns cookie names.
+Final Answer: [fix + explanation]</div>
+                            </div>
+                        </div>
+
+                        <div class="border border-stone-200 rounded-lg overflow-hidden">
+                            <div class="bg-amber-100 px-4 py-2 font-bold text-amber-900">Step-Back Prompting</div>
+                            <div class="p-4">
+                                <p class="text-sm text-stone-700 mb-3">Ask a <strong>general principles question first</strong>, then apply the answer to your specific task. Grounds the model before it jumps to a solution.</p>
+                                <div class="bg-stone-100 p-3 rounded font-mono text-xs text-stone-800 whitespace-pre-wrap">Example — optimize a slow Next.js page:
+
+Step 1: "What are the key factors that affect Next.js page load speed?"
+[Get response: images, SSR, bundle size, caching...]
+
+Step 2: "Using those factors, recommend specific optimizations for my /dashboard page that loads 50+ product images."
+[paste relevant code or describe the page]</div>
+                            </div>
+                        </div>
+
+                        <div class="border border-stone-200 rounded-lg overflow-hidden">
+                            <div class="bg-green-100 px-4 py-2 font-bold text-green-900">Self-Consistency (quick tip)</div>
+                            <div class="p-4">
+                                <p class="text-sm text-stone-700 mb-2">Run the <strong>same question 2–3 times</strong> with slightly different phrasing; pick the most common answer. Useful when a single CoT path might be wrong.</p>
+                                <p class="text-xs text-stone-500">Example: "Generate 3 different reasoning paths for this SQL query performance issue, then select the most consistent fix."</p>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-2xl font-semibold text-indigo-700 mb-4">3.6 Best Practices (Quick Reference)</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                        <div class="bg-stone-50 p-3 rounded-lg"><strong>Be specific</strong><p class="text-stone-600 mt-1">"Write a 300-word blog intro" beats "write about dogs."</p></div>
+                        <div class="bg-stone-50 p-3 rounded-lg"><strong>Use action verbs</strong><p class="text-stone-600 mt-1">Analyze, extract, refactor, generate, classify.</p></div>
+                        <div class="bg-stone-50 p-3 rounded-lg"><strong>Instructions &gt; constraints</strong><p class="text-stone-600 mt-1">Say what to do; avoid long lists of "don't."</p></div>
+                        <div class="bg-stone-50 p-3 rounded-lg"><strong>Define output format</strong><p class="text-stone-600 mt-1">JSON schema, markdown headings, code block only.</p></div>
+                        <div class="bg-stone-50 p-3 rounded-lg"><strong>Iterate &amp; document</strong><p class="text-stone-600 mt-1">A/B test prompts; save what works in your cheat sheet.</p></div>
+                        <div class="bg-stone-50 p-3 rounded-lg"><strong>Low temp for code</strong><p class="text-stone-600 mt-1">Temperature 0–0.3 for deterministic output.</p></div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-2xl font-semibold text-indigo-700 mb-4">3.7 The 6-Step Prompting Framework (S-T-C-C-F-E)</h3>
+                    
+                    <p class="text-stone-600 mb-4"><strong>The Power of Precision:</strong> The most important elements for getting functional code are <strong>Constraints</strong> (what not to do, e.g., "no external libraries") and <strong>Format</strong> (how to structure the output, e.g., "Output only JSON"). Review the complete framework <a href="https://github.com/panaversity/learn-agentic-ai-from-low-code-to-code/blob/main/03_prompt_engineering/six_part_prompting_framework.md" target="_blank" class="text-indigo-600 hover:underline font-medium">on Panaversity GitHub</a> or <a href="https://github.com/haseebpyd/learn-n8n-agentic-ai/blob/main/00_prompt_engineering/six_part_prompting_framework.md" target="_blank" class="text-indigo-600 hover:underline font-medium">here</a>.</p>
+                    
+                    <div class="overflow-x-auto mb-6">
+                        <table class="w-full border-collapse border border-stone-300 text-sm">
+                            <thead>
+                                <tr class="bg-indigo-100">
+                                    <th class="border border-stone-300 p-3 text-left font-bold text-indigo-900">Step</th>
+                                    <th class="border border-stone-300 p-3 text-left font-bold text-indigo-900">Detail</th>
+                                    <th class="border border-stone-300 p-3 text-left font-bold text-indigo-900">Example (Task: Write a Python function)</th>
+                                </tr>
+                            </thead>
+                            <tbody class="text-stone-700">
+                                <tr class="hover:bg-indigo-50">
+                                    <td class="border border-stone-300 p-3 font-semibold">1. Role</td>
+                                    <td class="border border-stone-300 p-3">Assign a persona</td>
+                                    <td class="border border-stone-300 p-3">"Act as a world-class Python backend engineer."</td>
+                                </tr>
+                                <tr class="hover:bg-indigo-50 bg-stone-50">
+                                    <td class="border border-stone-300 p-3 font-semibold">2. Task</td>
+                                    <td class="border border-stone-300 p-3">State the core goal clearly</td>
+                                    <td class="border border-stone-300 p-3">"Create a function to calculate the Haversine distance between two coordinates."</td>
+                                </tr>
+                                <tr class="hover:bg-indigo-50">
+                                    <td class="border border-stone-300 p-3 font-semibold">3. Context</td>
+                                    <td class="border border-stone-300 p-3">Provide necessary background info</td>
+                                    <td class="border border-stone-300 p-3">"The application uses the math library, and coordinates are passed as a tuple (lat, lon)."</td>
+                                </tr>
+                                <tr class="hover:bg-indigo-50 bg-stone-50">
+                                    <td class="border border-stone-300 p-3 font-semibold">4. Constraints</td>
+                                    <td class="border border-stone-300 p-3">Set hard limits on the output</td>
+                                    <td class="border border-stone-300 p-3">"Constraint: Do not use any external libraries like geopy or scipy. Constraint: Add docstrings and type hints."</td>
+                                </tr>
+                                <tr class="hover:bg-indigo-50">
+                                    <td class="border border-stone-300 p-3 font-semibold">5. Format</td>
+                                    <td class="border border-stone-300 p-3">Specify the desired output structure</td>
+                                    <td class="border border-stone-300 p-3">"Output only the complete, runnable Python code, enclosed in a code block."</td>
+                                </tr>
+                                <tr class="hover:bg-indigo-50 bg-stone-50">
+                                    <td class="border border-stone-300 p-3 font-semibold">6. Examples</td>
+                                    <td class="border border-stone-300 p-3">(Optional) Show I/O pairs</td>
+                                    <td class="border border-stone-300 p-3">"Example: Input (40.6892, -74.0445) and (34.0522, -118.2437) should return approx 3935 km."</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+<p class="text-stone-600 mb-6">Use this interactive builder to practice structuring the perfect prompt. Fill out the fields and see how they combine into a precise, effective instruction for an LLM.</p>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        
+
+<div class="space-y-4">
+                            <div>
+                                <label for="prompt-role" class="block text-sm font-medium text-stone-700">1. Role (Assign a persona)</label>
+                                <input type="text" id="prompt-role" class="mt-1 block w-full rounded-md border-stone-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="e.g., Act as a world-class Python backend engineer.">
+                            </div>
+                            <div>
+                                <label for="prompt-task" class="block text-sm font-medium text-stone-700">2. Task (State the goal)</label>
+                                <input type="text" id="prompt-task" class="mt-1 block w-full rounded-md border-stone-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="e.g., Create a function to calculate Haversine distance.">
+                            </div>
+                            <div>
+                                <label for="prompt-context" class="block text-sm font-medium text-stone-700">3. Context (Provide background)</label>
+                                <textarea id="prompt-context" rows="3" class="mt-1 block w-full rounded-md border-stone-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="e.g., The application uses the `math` library..."></textarea>
+                            </div>
+                            <div>
+                                <label for="prompt-constraints" class="block text-sm font-medium text-stone-700">4. Constraints (Set limits)</label>
+                                <textarea id="prompt-constraints" rows="2" class="mt-1 block w-full rounded-md border-stone-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="e.g., Constraint: Do not use any external libraries..."></textarea>
+                            </div>
+                            <div>
+                                <label for="prompt-format" class="block text-sm font-medium text-stone-700">5. Format (Specify output structure)</label>
+                                <input type="text" id="prompt-format" class="mt-1 block w-full rounded-md border-stone-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="e.g., Output only the complete, runnable Python code...">
+                            </div>
+                            <div>
+                                <label for="prompt-examples" class="block text-sm font-medium text-stone-700">6. Examples (Optional: Show I/O)</label>
+                                <textarea id="prompt-examples" rows="2" class="mt-1 block w-full rounded-md border-stone-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="e.g., Example: Input (40.6, -74.0) and (34.0, -118.2)..."></textarea>
+                            </div>
+                        </div>
+
+                        
+
+<div class="space-y-4">
+                            <label class="block text-sm font-medium text-stone-700">Generated Prompt:</label>
+                            <textarea id="prompt-output" rows="16" class="w-full bg-stone-100 rounded-md border-stone-300 font-mono text-sm p-4" readonly></textarea>
+                            <div class="flex space-x-2">
+                                <button id="generate-prompt-btn" class="w-full inline-flex justify-center rounded-md border border-transparent bg-indigo-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">Generate</button>
+                                <button id="copy-prompt-btn" class="w-full inline-flex justify-center rounded-md border border-stone-300 bg-white py-2 px-4 text-sm font-medium text-stone-700 shadow-sm hover:bg-stone-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">Copy to Clipboard</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-2xl font-semibold text-indigo-700 mb-4">Specialized Topics</h3>
+                    <p class="text-stone-600 mb-4 text-sm">Domain-specific prompting — concise guides with copy-ready examples. Each links to full Panaversity sources.</p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <a href="#prompting-context" class="block bg-stone-50 hover:bg-indigo-50 border border-stone-200 hover:border-indigo-300 p-4 rounded-lg transition-colors">
+                            <h4 class="font-bold text-indigo-900 mb-1">Context Engineering</h4>
+                            <p class="text-xs text-stone-600">Curate what the model sees — agents, RAG, output contracts.</p>
+                        </a>
+                        <a href="#prompting-images" class="block bg-stone-50 hover:bg-indigo-50 border border-stone-200 hover:border-indigo-300 p-4 rounded-lg transition-colors">
+                            <h4 class="font-bold text-indigo-900 mb-1">Image Generation</h4>
+                            <p class="text-xs text-stone-600">Gemini / Nano Banana — photography language and branding portraits.</p>
+                        </a>
+                        <a href="#prompting-ux" class="block bg-stone-50 hover:bg-indigo-50 border border-stone-200 hover:border-indigo-300 p-4 rounded-lg transition-colors">
+                            <h4 class="font-bold text-indigo-900 mb-1">UX Design</h4>
+                            <p class="text-xs text-stone-600">UXPilot prompts as mini design specs for dashboards and flows.</p>
+                        </a>
+                        <a href="#prompting-ui" class="block bg-stone-50 hover:bg-indigo-50 border border-stone-200 hover:border-indigo-300 p-4 rounded-lg transition-colors">
+                            <h4 class="font-bold text-indigo-900 mb-1">UI Development</h4>
+                            <p class="text-xs text-stone-600">Lovable — full-stack from natural language, one feature per prompt.</p>
+                        </a>
+                        <a href="#prompting-video" class="block bg-stone-50 hover:bg-indigo-50 border border-stone-200 hover:border-indigo-300 p-4 rounded-lg transition-colors">
+                            <h4 class="font-bold text-indigo-900 mb-1">Video Generation</h4>
+                            <p class="text-xs text-stone-600">Google Veo 3 — narrative, camera, audio for 8-second clips.</p>
+                        </a>
+                        <a href="#prompting-gpts" class="block bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 hover:border-emerald-400 p-4 rounded-lg transition-colors md:col-span-2 lg:col-span-1">
+                            <h4 class="font-bold text-emerald-900 mb-1">Custom GPTs &amp; Gems</h4>
+                            <p class="text-xs text-stone-600">Package your prompts — step-by-step ChatGPT GPT + Gemini Gem builds.</p>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="bg-indigo-50 border border-indigo-200 p-5 rounded-lg">
+                    <h4 class="font-bold text-indigo-900 mb-2">Chapter 3 Checkpoint</h4>
+                    <ul class="list-disc pl-5 text-sm text-indigo-800 space-y-1">
+                        <li>Used the <strong>Prompt Coach</strong> to rewrite one rough prompt</li>
+                        <li>Built one prompt with the <strong>6-step framework</strong> (interactive builder above)</li>
+                        <li>Can explain when to use <strong>CoT</strong> vs <strong>ReAct</strong></li>
+                        <li>Know the difference between <strong>prompt</strong> and <strong>context</strong> engineering</li>
+                        <li>Built one <strong>Custom GPT</strong> or <strong>Gemini Gem</strong> — <a href="#prompting-gpts" class="underline font-medium">see guide</a></li>
+                    </ul>
+                </div>
+
+            </section>

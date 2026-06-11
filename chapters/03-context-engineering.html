@@ -1,0 +1,88 @@
+<section id="prompting-context" class="chapter space-y-8">
+    <p class="chapter-breadcrumb text-sm text-stone-500"><a href="#prompting">Chapter 3: Prompt Engineering</a> / Context Engineering</p>
+    <header>
+        <h2 class="text-4xl font-bold text-stone-900">3a. Context Engineering</h2>
+        <p class="text-lg text-stone-600 mt-2">Curate <em>what the model sees</em> — not just how you ask. Essential for agents, RAG, and Cursor workflows.</p>
+        <p class="text-sm text-stone-500 mt-2">Source: <a href="https://github.com/panaversity/learn-agentic-ai-from-low-code-to-code/blob/main/03_prompt_engineering/context_engineering_tutorial.md" target="_blank" class="text-indigo-600 hover:underline">Panaversity — Context Engineering Tutorial</a></p>
+    </header>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-xl font-semibold text-indigo-700 mb-3">What Is Context Engineering?</h3>
+        <p class="text-stone-700 mb-4">Context engineering is designing dynamic systems that give an LLM the <strong>right information, in the right format, at the right time</strong>.</p>
+        <div class="bg-indigo-50 border-l-4 border-indigo-500 p-4 rounded-r-lg text-sm text-stone-700">
+            <strong>André Karpathy analogy:</strong> The LLM is the <strong>CPU</strong>; the context window is the <strong>RAM</strong>. Context engineering optimizes how you use that limited memory.
+        </div>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-xl font-semibold text-indigo-700 mb-3">Prompt vs Context Engineering</h3>
+        <div class="overflow-x-auto mb-4">
+            <table class="w-full border-collapse border border-stone-300 text-sm">
+                <thead><tr class="bg-stone-100">
+                    <th class="border border-stone-300 p-2 text-left">Aspect</th>
+                    <th class="border border-stone-300 p-2 text-left">Prompt engineering</th>
+                    <th class="border border-stone-300 p-2 text-left">Context engineering</th>
+                </tr></thead>
+                <tbody class="text-stone-700">
+                    <tr><td class="border border-stone-300 p-2 font-semibold">Goal</td><td class="border border-stone-300 p-2">How to behave &amp; what to produce</td><td class="border border-stone-300 p-2">Facts the model should rely on</td></tr>
+                    <tr class="bg-stone-50"><td class="border border-stone-300 p-2 font-semibold">Levers</td><td class="border border-stone-300 p-2">Role, constraints, JSON schema, few-shot</td><td class="border border-stone-300 p-2">RAG, docs, @codebase, tools, memory</td></tr>
+                    <tr><td class="border border-stone-300 p-2 font-semibold">When</td><td class="border border-stone-300 p-2">ChatGPT conversations</td><td class="border border-stone-300 p-2">AI apps &amp; agents (autonomous, multi-turn)</td></tr>
+                    <tr class="bg-stone-50"><td class="border border-stone-300 p-2 font-semibold">Failure mode</td><td class="border border-stone-300 p-2">Wrong format / vague output</td><td class="border border-stone-300 p-2">Hallucinations / outdated answers</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <p class="text-sm text-stone-600"><strong>One-liner:</strong> Prompt engineering is <em>how you ask</em>; context engineering is <em>what you show</em>. Combine both for reliable apps.</p>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-xl font-semibold text-indigo-700 mb-3">Six Components of AI Agents</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+            <div class="bg-stone-50 p-3 rounded-lg"><strong>1. Model</strong><p class="text-stone-600 mt-1">Core engine (GPT, Claude, Gemini)</p></div>
+            <div class="bg-stone-50 p-3 rounded-lg"><strong>2. Tools</strong><p class="text-stone-600 mt-1">APIs, databases, calendar, email</p></div>
+            <div class="bg-stone-50 p-3 rounded-lg"><strong>3. Knowledge &amp; Memory</strong><p class="text-stone-600 mt-1">Static docs + conversation history</p></div>
+            <div class="bg-stone-50 p-3 rounded-lg"><strong>4. Audio &amp; Speech</strong><p class="text-stone-600 mt-1">Voice input/output</p></div>
+            <div class="bg-stone-50 p-3 rounded-lg"><strong>5. Guardrails</strong><p class="text-stone-600 mt-1">Safety, tone, compliance filters</p></div>
+            <div class="bg-stone-50 p-3 rounded-lg"><strong>6. Orchestration</strong><p class="text-stone-600 mt-1">Deploy, monitor, improve</p></div>
+        </div>
+        <p class="text-xs text-stone-500 mt-3">Context engineering is the "assembly instructions" that tell all six parts how to work together.</p>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-xl font-semibold text-indigo-700 mb-3">Practical Checklist (Anthropic)</h3>
+        <ul class="list-disc pl-5 text-sm text-stone-700 space-y-2">
+            <li>Write a <strong>minimal, sectioned system prompt</strong> — add guidance only when tests fail</li>
+            <li><strong>Trim your toolset</strong> — each tool should be obvious and token-efficient</li>
+            <li>Keep <strong>3–7 canonical examples</strong>; move edge cases to retrieval</li>
+            <li>Start small upfront, <strong>fetch details just-in-time</strong> via tools (not stuffing context)</li>
+            <li>For long tasks: <strong>compact</strong> history, maintain NOTES.md-style memory, use sub-agents</li>
+        </ul>
+        <p class="text-sm mt-3"><a href="https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents" target="_blank" class="text-indigo-600 hover:underline">Read: Effective Context Engineering for AI Agents (Anthropic)</a></p>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-xl font-semibold text-indigo-700 mb-3">Example: AI Research Assistant Output Contract</h3>
+        <p class="text-stone-600 text-sm mb-3">A context-engineered prompt defines role, steps, and a strict JSON schema — the model cannot improvise format.</p>
+        <div class="bg-stone-900 text-green-400 p-4 rounded font-mono text-xs code-block">
+            <button class="copy-code-btn bg-green-600 hover:bg-green-700 text-white rounded px-2 py-1" data-copy="You are an AI research assistant. Given a user query in &lt;user_query&gt; tags:
+
+1. Extract up to 10 diverse subtasks (different angles/source types).
+2. Prioritize by engagement and authority.
+3. Return JSON array — each item: id, query, source_type, time_period, priority (1-10), start_date, end_date (UTC ISO).
+4. Summarize trends in max 300 words with bullet points.
+
+Constraints: Only information from the past 10 days. No personal opinions. Valid JSON only.">Copy</button>
+            <pre class="whitespace-pre-wrap mt-8">Role: AI research assistant focused on recent AI trends.
+
+Task: Break &lt;user_query&gt; into subtasks; return JSON per schema; summarize in 300 words.
+
+Output schema (each subtask):
+{ "id", "query", "source_type", "priority", "start_date", "end_date" }
+
+Constraints: Past 10 days only. JSON only. No fluff.</pre>
+        </div>
+    </div>
+
+    <div class="bg-stone-100 p-4 rounded-lg text-sm">
+        <a href="#prompting" class="text-indigo-600 hover:underline font-medium">← Back to Chapter 3 hub</a>
+    </div>
+</section>

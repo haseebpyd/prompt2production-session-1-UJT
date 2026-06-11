@@ -1,0 +1,534 @@
+<section id="agile" class="chapter space-y-8">
+                <header>
+                    <h2 class="text-4xl font-bold text-stone-900">Chapter 5: Agile & Sprint-Driven Development</h2>
+                    <p class="text-lg text-stone-600 mt-2">AI makes you fast — agile keeps you organized. This chapter covers agile basics, a full intro to <strong>PromptWizard</strong> (AlrightTech's sprint platform), sprint methodology, and <strong>ready-made Cursor prompts</strong> you can copy today.</p>
+                </header>
+
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-2xl font-semibold text-indigo-700 mb-4">5.1 Why Agile for AI Projects?</h3>
+                    <p class="text-stone-700 mb-4">AI can generate hundreds of lines in seconds. Without structure, you get messy code, scope creep, and unfinished features. Agile gives you:</p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="bg-indigo-50 p-4 rounded-lg"><h4 class="font-semibold text-indigo-900">Clear priorities</h4><p class="text-sm text-stone-600">Work on the most important feature first, every sprint.</p></div>
+                        <div class="bg-green-50 p-4 rounded-lg"><h4 class="font-semibold text-green-900">Incremental delivery</h4><p class="text-sm text-stone-600">Ship a working slice each sprint — not everything at once.</p></div>
+                        <div class="bg-purple-50 p-4 rounded-lg"><h4 class="font-semibold text-purple-900">Feedback loops</h4><p class="text-sm text-stone-600">Review what you built, adjust the plan, improve next sprint.</p></div>
+                        <div class="bg-amber-50 p-4 rounded-lg"><h4 class="font-semibold text-amber-900">AI-friendly scope</h4><p class="text-sm text-stone-600">Small, well-defined stories = better AI prompts and outputs.</p></div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-2xl font-semibold text-indigo-700 mb-4">5.2 Core Concepts</h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full border-collapse border border-stone-300 text-sm">
+                            <thead><tr class="bg-indigo-100">
+                                <th class="border border-stone-300 p-3 text-left">Term</th>
+                                <th class="border border-stone-300 p-3 text-left">Definition</th>
+                                <th class="border border-stone-300 p-3 text-left">Example</th>
+                            </tr></thead>
+                            <tbody class="text-stone-700">
+                                <tr><td class="border border-stone-300 p-3 font-semibold">Product Backlog</td><td class="border border-stone-300 p-3">Ordered list of all features/tasks</td><td class="border border-stone-300 p-3">Auth, dashboard, API, deploy</td></tr>
+                                <tr class="bg-stone-50"><td class="border border-stone-300 p-3 font-semibold">User Story</td><td class="border border-stone-300 p-3">Feature from the user's perspective</td><td class="border border-stone-300 p-3">"As a user, I can log in with email"</td></tr>
+                                <tr><td class="border border-stone-300 p-3 font-semibold">Sprint</td><td class="border border-stone-300 p-3">Fixed time box to deliver selected stories</td><td class="border border-stone-300 p-3">1-week sprint: auth + profile page</td></tr>
+                                <tr class="bg-stone-50"><td class="border border-stone-300 p-3 font-semibold">Sprint Planning</td><td class="border border-stone-300 p-3">Pick stories from backlog for this sprint</td><td class="border border-stone-300 p-3">Select top 3 stories, break into tasks</td></tr>
+                                <tr><td class="border border-stone-300 p-3 font-semibold">Definition of Done</td><td class="border border-stone-300 p-3">Criteria for a story to be complete</td><td class="border border-stone-300 p-3">Code works, tested, committed, reviewed</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-2xl font-semibold text-indigo-700 mb-4">5.3 User Story Template</h3>
+                    <div class="bg-stone-100 p-4 rounded-lg font-mono text-sm mb-4">
+                        <p><strong>As a</strong> [type of user],</p>
+                        <p><strong>I want</strong> [goal/feature],</p>
+                        <p><strong>So that</strong> [benefit/reason].</p>
+                        <p class="mt-3 text-stone-600"><strong>Acceptance Criteria:</strong></p>
+                        <p class="text-stone-600">- [ ] Criterion 1</p>
+                        <p class="text-stone-600">- [ ] Criterion 2</p>
+                    </div>
+                    <h4 class="font-semibold text-stone-800 mb-2">Example for your main project:</h4>
+                    <div class="bg-indigo-50 p-4 rounded-lg text-sm text-stone-700">
+                        <p><strong>As a</strong> registered user, <strong>I want</strong> to see a dashboard with my recent activity, <strong>so that</strong> I can quickly review what happened.</p>
+                        <p class="mt-2"><strong>Acceptance Criteria:</strong></p>
+                        <p>- [ ] Dashboard loads after login</p>
+                        <p>- [ ] Shows last 10 activities with timestamps</p>
+                        <p>- [ ] Responsive on mobile and desktop</p>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-2xl font-semibold text-indigo-700 mb-4">5.4 Sprint Cycle for Intern Projects</h3>
+                    <div class="deployment-flow mb-4">
+                        <div class="flow-item"><div class="bg-indigo-50 p-3 rounded-lg"><p class="font-semibold text-sm">Plan</p><p class="text-xs text-stone-500">Pick stories</p></div></div>
+                        <span class="flow-arrow">→</span>
+                        <div class="flow-item"><div class="bg-blue-50 p-3 rounded-lg"><p class="font-semibold text-sm">Build</p><p class="text-xs text-stone-500">AI + Cursor</p></div></div>
+                        <span class="flow-arrow">→</span>
+                        <div class="flow-item"><div class="bg-green-50 p-3 rounded-lg"><p class="font-semibold text-sm">Test</p><p class="text-xs text-stone-500">Verify criteria</p></div></div>
+                        <span class="flow-arrow">→</span>
+                        <div class="flow-item"><div class="bg-purple-50 p-3 rounded-lg"><p class="font-semibold text-sm">Commit</p><p class="text-xs text-stone-500">Git push</p></div></div>
+                        <span class="flow-arrow">→</span>
+                        <div class="flow-item"><div class="bg-amber-50 p-3 rounded-lg"><p class="font-semibold text-sm">Review</p><p class="text-xs text-stone-500">Demo + retro</p></div></div>
+                    </div>
+                    <p class="text-sm text-stone-600">Each user story becomes a focused AI prompt. One story per session works well when starting out. As you improve, batch 2–3 related stories per sprint.</p>
+                </div>
+
+                <div class="bg-gradient-to-r from-cyan-600 to-indigo-700 p-6 rounded-lg shadow-md text-white">
+                    <p class="text-cyan-200 text-xs font-bold uppercase tracking-wide mb-1">Part B — The Tool</p>
+                    <h3 class="text-2xl font-semibold mb-2">5.5 Introducing PromptWizard</h3>
+                    <p class="text-indigo-100 mb-4"><strong>PromptWizard</strong> is AlrightTech's internal platform that turns client requirement documents into standardized markdown artifacts and tracks intern delivery progress. It replaces ad-hoc copy-paste workflows with a guided pipeline.</p>
+                    <div class="deployment-flow mb-4">
+                        <div class="flow-item"><div class="bg-white/10 p-3 rounded-lg"><p class="font-semibold text-sm">Upload</p><p class="text-xs text-cyan-200">Requirements</p></div></div>
+                        <span class="text-cyan-300 font-bold">→</span>
+                        <div class="flow-item"><div class="bg-white/10 p-3 rounded-lg"><p class="font-semibold text-sm">4 Artifacts</p><p class="text-xs text-cyan-200">AI-generated</p></div></div>
+                        <span class="text-cyan-300 font-bold">→</span>
+                        <div class="flow-item"><div class="bg-white/10 p-3 rounded-lg"><p class="font-semibold text-sm">Cursor</p><p class="text-xs text-cyan-200">Sprint prompts</p></div></div>
+                        <span class="text-cyan-300 font-bold">→</span>
+                        <div class="flow-item"><div class="bg-white/10 p-3 rounded-lg"><p class="font-semibold text-sm">Dashboard</p><p class="text-xs text-cyan-200">Track progress</p></div></div>
+                    </div>
+                    <p class="text-sm text-indigo-100">Upload requirements → generate <code class="bg-white/20 px-1 rounded">context.md</code>, <code class="bg-white/20 px-1 rounded">tech.md</code>, <code class="bg-white/20 px-1 rounded">uiux.md</code>, and <code class="bg-white/20 px-1 rounded">sprint.md</code> → execute sprints in Cursor using embedded sprint prompts → mark progress on the dashboard. A built-in knowledge base covers mobile conversion, notifications, OAuth, store publishing, subscriptions, and deployment.</p>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-2xl font-semibold text-indigo-700 mb-4">5.6 Why PromptWizard Exists — Platform Goals</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="bg-cyan-50 p-4 rounded-lg border border-cyan-100">
+                            <h4 class="font-semibold text-cyan-900 mb-1">1. Standardize onboarding</h4>
+                            <p class="text-sm text-stone-600">Every intern follows the same Cursor + sprint workflow — no guessing, no reinventing the process.</p>
+                        </div>
+                        <div class="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                            <h4 class="font-semibold text-blue-900 mb-1">2. Reduce setup time</h4>
+                            <p class="text-sm text-stone-600">Auto-generate foundation and sprint docs from raw client requirements in minutes, not days.</p>
+                        </div>
+                        <div class="bg-purple-50 p-4 rounded-lg border border-purple-100">
+                            <h4 class="font-semibold text-purple-900 mb-1">3. Improve visibility</h4>
+                            <p class="text-sm text-stone-600">Mentors see pipeline and per-sprint status on a dashboard — without asking for updates.</p>
+                        </div>
+                        <div class="bg-green-50 p-4 rounded-lg border border-green-100">
+                            <h4 class="font-semibold text-green-900 mb-1">4. Centralize know-how</h4>
+                            <p class="text-sm text-stone-600">KB articles for Capacitor, FCM, IAP, Vercel, EC2, Railway, Flutter, and more.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-2xl font-semibold text-indigo-700 mb-4">5.7 User Roles</h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full border-collapse border border-stone-300 text-sm">
+                            <thead><tr class="bg-indigo-100">
+                                <th class="border border-stone-300 p-3 text-left">Role</th>
+                                <th class="border border-stone-300 p-3 text-left">Permissions</th>
+                            </tr></thead>
+                            <tbody class="text-stone-700">
+                                <tr>
+                                    <td class="border border-stone-300 p-3 font-semibold">Intern</td>
+                                    <td class="border border-stone-300 p-3">Create own projects, upload docs, run AI generation, download artifacts, update sprint progress, read knowledge base</td>
+                                </tr>
+                                <tr class="bg-stone-50">
+                                    <td class="border border-stone-300 p-3 font-semibold">Admin / Mentor</td>
+                                    <td class="border border-stone-300 p-3">All intern capabilities plus view <strong>all</strong> projects, audit generation jobs, monitor stuck sprints (&gt;7 days in progress)</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-2xl font-semibold text-indigo-700 mb-4">5.8 Platform Features — Step by Step</h3>
+                    <div class="space-y-6">
+                        <div class="border-l-4 border-cyan-500 pl-4">
+                            <h4 class="font-bold text-stone-800 mb-2">Requirement intake</h4>
+                            <ul class="list-disc pl-5 text-sm text-stone-600 space-y-1">
+                                <li>Drag-and-drop or file picker: <strong>PDF, DOCX, MD, TXT</strong> (max 10 MB)</li>
+                                <li>Paste requirements text directly into a textarea</li>
+                                <li>Project metadata: title, type (web, mobile, full-stack, website), optional stack notes</li>
+                            </ul>
+                        </div>
+                        <div class="border-l-4 border-indigo-500 pl-4">
+                            <h4 class="font-bold text-stone-800 mb-2">Artifact generation pipeline (AI-powered)</h4>
+                            <ol class="list-decimal pl-5 text-sm text-stone-600 space-y-1">
+                                <li><strong>context.md</strong> — Executive summary, goals, roles, features, scope</li>
+                                <li><strong>tech.md</strong> — Stack (default Next.js + PostgreSQL + Tailwind), API, database, auth, deployment</li>
+                                <li><strong>uiux.md</strong> — Tailwind palette, components, layout, accessibility</li>
+                                <li><strong>sprint.md</strong> — Phases and sprints with full-stack scope; each sprint includes a Cursor execution prompt block</li>
+                            </ol>
+                            <p class="text-xs text-stone-500 mt-2">Generate in order — each step unlocks the next. AI validates required sections and retries if output is incomplete.</p>
+                        </div>
+                        <div class="border-l-4 border-purple-500 pl-4">
+                            <h4 class="font-bold text-stone-800 mb-2">Project dashboard</h4>
+                            <p class="text-sm text-stone-600 mb-2">Pipeline stepper tracks where you are:</p>
+                            <p class="text-sm font-mono bg-stone-100 px-3 py-2 rounded">Upload → Context → Tech → UI/UX → Sprint doc → Build sprints</p>
+                            <ul class="list-disc pl-5 text-sm text-stone-600 mt-2 space-y-1">
+                                <li>Tabbed artifact preview with markdown rendering</li>
+                                <li>Copy, single-file download, or <strong>ZIP export</strong> of all four files</li>
+                                <li>Sprint checklist auto-parsed from <code class="bg-stone-100 px-1">sprint.md</code> with status tracking</li>
+                            </ul>
+                        </div>
+                        <div class="border-l-4 border-green-500 pl-4">
+                            <h4 class="font-bold text-stone-800 mb-2">Knowledge base (9 guides)</h4>
+                            <p class="text-sm text-stone-600">Searchable articles linked from the project UI: Capacitor (web-to-mobile), FCM push notifications, Google/Apple OAuth, App Store & Play publishing, in-app subscriptions (IAP), Vercel deploy, EC2, Railway, Flutter setup.</p>
+                        </div>
+                        <div class="border-l-4 border-amber-500 pl-4">
+                            <h4 class="font-bold text-stone-800 mb-2">Admin / mentor view</h4>
+                            <p class="text-sm text-stone-600">Cross-intern project list, completion metrics, generation job audit (success/failure, token usage), stuck sprint alerts.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-2xl font-semibold text-indigo-700 mb-4">5.9 Assumptions, Scope & Risks</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                        <div class="bg-stone-50 p-4 rounded-lg">
+                            <h4 class="font-semibold text-stone-800 mb-2">Assumptions</h4>
+                            <ul class="list-disc pl-4 text-stone-600 space-y-1">
+                                <li>Default stack: Next.js App Router, PostgreSQL, Tailwind</li>
+                                <li>Mobile: Flutter (native) or Capacitor (web-to-mobile)</li>
+                                <li>Cursor <strong>Plan mode</strong> + foundation docs + one sprint prompt at a time</li>
+                            </ul>
+                        </div>
+                        <div class="bg-stone-50 p-4 rounded-lg">
+                            <h4 class="font-semibold text-stone-800 mb-2">Out of scope (v1)</h4>
+                            <ul class="list-disc pl-4 text-stone-600 space-y-1">
+                                <li>Git integration inside PromptWizard</li>
+                                <li>Cursor IDE plugin</li>
+                                <li>Billing / multi-org SaaS</li>
+                            </ul>
+                        </div>
+                        <div class="bg-stone-50 p-4 rounded-lg">
+                            <h4 class="font-semibold text-stone-800 mb-2">Risks & mitigations</h4>
+                            <ul class="list-disc pl-4 text-stone-600 space-y-1">
+                                <li>AI output varies → validators + retry + mentor review</li>
+                                <li>Large docs → truncation + summary pass</li>
+                                <li>API cost → rate limits (10 jobs/hour)</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-cyan-50 border border-cyan-200 p-5 rounded-lg">
+                    <h4 class="font-bold text-cyan-900 mb-2">How to start with PromptWizard</h4>
+                    <ol class="list-decimal pl-5 text-sm text-cyan-900 space-y-1">
+                        <li>Log in as intern → <strong>Projects</strong> → <strong>New Project</strong></li>
+                        <li>Upload client PDF/DOCX or paste requirements (min ~50 characters)</li>
+                        <li>Click Generate for each artifact in pipeline order</li>
+                        <li>Download ZIP → open in Cursor with your project repo</li>
+                        <li>Execute sprints one at a time (see §5.14 and §5.15)</li>
+                        <li>Mark each sprint Done on the dashboard checklist</li>
+                    </ol>
+                    <p class="text-xs text-cyan-800 mt-3">No app access yet? Use the files in <a href="sprint-templates/" class="underline font-medium">sprint-templates/</a> as your starting point.</p>
+                </div>
+
+                <div class="border-t-4 border-indigo-200 pt-2">
+                    <p class="text-xs font-bold text-indigo-500 uppercase tracking-wide px-1">Part C — Sprint Methodology</p>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-2xl font-semibold text-indigo-700 mb-4">5.10 The Four Foundation Files</h3>
+                    <p class="text-stone-600 mb-4">Every client project starts with these markdown artifacts. Attach all four to Cursor Plan mode for every sprint after Phase 1.</p>
+                    <div class="space-y-4">
+                        <div class="border border-stone-200 rounded-lg overflow-hidden">
+                            <div class="bg-indigo-100 px-4 py-2 font-semibold text-indigo-900">context.md — What & Why</div>
+                            <div class="p-4 text-sm text-stone-700">
+                                <p>Executive summary, goals, user roles, feature list, scope (in/out), assumptions, risks.</p>
+                                <p class="mt-2 text-stone-500">Example: "PromptWizard standardizes intern onboarding — upload requirements → generate docs → track sprint progress."</p>
+                            </div>
+                        </div>
+                        <div class="border border-stone-200 rounded-lg overflow-hidden">
+                            <div class="bg-blue-100 px-4 py-2 font-semibold text-blue-900">tech.md — How (Stack)</div>
+                            <div class="p-4 text-sm text-stone-700">
+                                <p>Framework, database, auth, AI provider, API patterns, env vars, deployment target.</p>
+                                <p class="mt-2 text-stone-500">AlrightTech default: <strong>Next.js App Router + PostgreSQL + Prisma + Auth.js + Tailwind</strong>. Mobile: Flutter native or Capacitor for web-to-mobile.</p>
+                            </div>
+                        </div>
+                        <div class="border border-stone-200 rounded-lg overflow-hidden">
+                            <div class="bg-purple-100 px-4 py-2 font-semibold text-purple-900">uiux.md — Look & Feel</div>
+                            <div class="p-4 text-sm text-stone-700">
+                                <p>Color palette (hex + Tailwind tokens), typography, layout, component specs, accessibility, dark mode.</p>
+                                <p class="mt-2 text-stone-500">AlrightTech brand: navy <code class="bg-stone-100 px-1">#111424</code>, cyan primary <code class="bg-stone-100 px-1">#00A7E1</code>, pink accent <code class="bg-stone-100 px-1">#EC66B7</code>.</p>
+                            </div>
+                        </div>
+                        <div class="border border-stone-200 rounded-lg overflow-hidden">
+                            <div class="bg-green-100 px-4 py-2 font-semibold text-green-900">sprint.md — When & What Order</div>
+                            <div class="p-4 text-sm text-stone-700">
+                                <p>Phases → sprints with Goals, Tasks, Acceptance Criteria, Stack Touchpoints (UI/API/DB), Dependencies, and a <strong>Sprint Execution Prompt</strong> block for Cursor.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="mt-4 text-sm"><a href="sprint-templates/" class="text-indigo-600 hover:underline font-medium">Browse sprint-templates/</a> for full examples copied from PromptWizard.</p>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-2xl font-semibold text-indigo-700 mb-4">5.11 Sprint Document Structure</h3>
+                    <p class="text-stone-600 mb-4">Each sprint in <code class="bg-stone-100 px-1 rounded text-sm">sprint.md</code> must be independently deliverable across UI, API, and database.</p>
+                    <div class="overflow-x-auto">
+                        <table class="w-full border-collapse border border-stone-300 text-sm">
+                            <thead><tr class="bg-stone-100">
+                                <th class="border border-stone-300 p-2 text-left">Section</th>
+                                <th class="border border-stone-300 p-2 text-left">Purpose</th>
+                            </tr></thead>
+                            <tbody class="text-stone-700">
+                                <tr><td class="border border-stone-300 p-2 font-mono text-xs">### Sprint X.Y: Title</td><td class="border border-stone-300 p-2">Sprint name and phase</td></tr>
+                                <tr class="bg-stone-50"><td class="border border-stone-300 p-2 font-semibold">Goals</td><td class="border border-stone-300 p-2">1–3 outcomes for this sprint</td></tr>
+                                <tr><td class="border border-stone-300 p-2 font-semibold">Tasks</td><td class="border border-stone-300 p-2">Concrete implementation checklist</td></tr>
+                                <tr class="bg-stone-50"><td class="border border-stone-300 p-2 font-semibold">Acceptance Criteria</td><td class="border border-stone-300 p-2">Checkboxes — definition of done</td></tr>
+                                <tr><td class="border border-stone-300 p-2 font-semibold">Stack Touchpoints</td><td class="border border-stone-300 p-2">What changes in UI / API / DB</td></tr>
+                                <tr class="bg-stone-50"><td class="border border-stone-300 p-2 font-semibold">Dependencies</td><td class="border border-stone-300 p-2">Prior sprints that must be complete</td></tr>
+                                <tr><td class="border border-stone-300 p-2 font-semibold">Sprint Execution Prompt</td><td class="border border-stone-300 p-2">Copy-paste block for Cursor Plan mode</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-2xl font-semibold text-indigo-700 mb-4">5.12 Example Sprint (from PromptWizard)</h3>
+                    <p class="text-stone-600 mb-3">Phase 2, Sprint 2.1 — Authentication. This is the format every sprint should follow:</p>
+                    <div class="bg-stone-900 text-green-400 p-4 rounded font-mono text-xs code-block overflow-x-auto">
+                        <button class="copy-code-btn bg-green-600 hover:bg-green-700 text-white rounded px-2 py-1" data-copy="### Sprint 2.1: Authentication & RBAC
+
+Goals
+- Email/password login and registration for interns.
+- JWT sessions with ADMIN | INTERN roles; middleware protects routes.
+
+Tasks
+- Auth.js credentials provider, middleware matcher.
+- /login page: sign-in + register forms.
+- requireUser() / requireAdmin() helpers.
+
+Acceptance Criteria
+- [ ] Intern can register and sign in.
+- [ ] Admin reaches /admin; intern cannot.
+- [ ] Passwords stored as bcrypt hashes.
+- [ ] Unauthenticated users redirect to /login.
+
+Stack Touchpoints
+- UI: /login, home redirect when authenticated
+- API: registerAction, loginAction, /api/auth/[...nextauth]
+- DB: User role and passwordHash
+
+Dependencies
+- Sprint 1.2 (scaffold & schema).
+
+Sprint Execution Prompt
+Read context.md, tech.md, uiux.md. Implement Auth.js (credentials) per FR-AUTH.
+Deliver: login/register UI, JWT sessions with role, middleware for /projects /kb /admin.
+Use existing Prisma User model and seed accounts.">Copy</button>
+                        <pre class="whitespace-pre-wrap mt-8">### Sprint 2.1: Authentication &amp; RBAC
+
+**Goals** — Email/password auth, JWT sessions, ADMIN | INTERN roles.
+
+**Acceptance Criteria**
+- [ ] Intern can register and sign in
+- [ ] Admin reaches /admin; intern cannot
+- [ ] Passwords stored as bcrypt hashes
+
+**Sprint Execution Prompt** (paste into Cursor Plan mode):
+Implement Auth.js (credentials) per tech.md.
+Deliver: login/register UI, JWT sessions with role, middleware.
+Attach: context.md, tech.md, uiux.md</pre>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-2xl font-semibold text-indigo-700 mb-4">5.13 How to Execute a Sprint in Cursor</h3>
+                    <ol class="list-decimal pl-5 space-y-3 text-stone-700">
+                        <li><strong>Complete foundation docs</strong> — context, tech, uiux, sprint (via PromptWizard or manual).</li>
+                        <li><strong>Open Cursor Plan mode</strong> — not Agent for your first sprints; Plan lets you review before applying.</li>
+                        <li><strong>Attach foundation files</strong> — <code class="bg-stone-100 px-1 text-sm">@context.md</code> <code class="bg-stone-100 px-1 text-sm">@tech.md</code> <code class="bg-stone-100 px-1 text-sm">@uiux.md</code></li>
+                        <li><strong>Paste one Sprint Execution Prompt</strong> — only one sprint at a time; never the whole sprint.md.</li>
+                        <li><strong>Review the plan</strong> — check files, scope, and that it matches acceptance criteria.</li>
+                        <li><strong>Build → test → commit</strong> — <code class="bg-stone-100 px-1 text-sm">git commit -m "feat: sprint 2.1 auth"</code></li>
+                        <li><strong>Mark sprint done</strong> — update checklist in PromptWizard or your sprint.md checkboxes.</li>
+                        <li><strong>Next sprint</strong> — repeat with the next execution prompt block.</li>
+                    </ol>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-2xl font-semibold text-indigo-700 mb-4">5.14 Typical Project Phases</h3>
+                    <p class="text-stone-600 mb-4">PromptWizard projects follow 5 phases (14 sprints in the reference app). Adapt phase count to your client project size.</p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
+                        <div class="bg-stone-50 p-4 rounded-lg border"><strong class="text-indigo-900">Phase 1</strong><p class="text-stone-600 mt-1">Discovery &amp; foundation docs + scaffold</p></div>
+                        <div class="bg-stone-50 p-4 rounded-lg border"><strong class="text-indigo-900">Phase 2</strong><p class="text-stone-600 mt-1">Auth &amp; project core + upload</p></div>
+                        <div class="bg-stone-50 p-4 rounded-lg border"><strong class="text-indigo-900">Phase 3</strong><p class="text-stone-600 mt-1">AI pipeline &amp; artifact export</p></div>
+                        <div class="bg-stone-50 p-4 rounded-lg border"><strong class="text-indigo-900">Phase 4</strong><p class="text-stone-600 mt-1">Progress tracking, KB, admin</p></div>
+                        <div class="bg-stone-50 p-4 rounded-lg border"><strong class="text-indigo-900">Phase 5</strong><p class="text-stone-600 mt-1">Hardening, OAuth, production deploy</p></div>
+                        <div class="bg-green-50 p-4 rounded-lg border border-green-200"><strong class="text-green-900">Your capstone</strong><p class="text-stone-600 mt-1">Apply same structure to client web/mobile app</p></div>
+                    </div>
+                </div>
+
+                <div class="border-t-4 border-green-200 pt-2">
+                    <p class="text-xs font-bold text-green-600 uppercase tracking-wide px-1">Part D — Ready-Made Prompts</p>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-2xl font-semibold text-indigo-700 mb-2">5.15 Ready-Made Sprint Execution Prompts</h3>
+                    <p class="text-stone-600 mb-4">Copy these into <strong>Cursor Plan mode</strong>. Always attach <code class="bg-stone-100 px-1 text-sm">@context.md</code> <code class="bg-stone-100 px-1 text-sm">@tech.md</code> <code class="bg-stone-100 px-1 text-sm">@uiux.md</code> first. Use <strong>one prompt per session</strong>.</p>
+
+                    <div id="sprint-prompt-accordion" class="space-y-3">
+
+                        <div class="bg-white rounded-lg shadow-md overflow-hidden border border-stone-200">
+                            <button class="accordion-button flex justify-between items-center w-full p-4 text-left font-semibold text-cyan-800 bg-cyan-50 hover:bg-cyan-100 focus:outline-none">
+                                Phase 1 — Application Scaffold &amp; Database
+                            </button>
+                            <div class="accordion-content p-4">
+                                <p class="text-stone-700 font-mono text-xs bg-stone-50 p-3 rounded-md mb-3 whitespace-pre-wrap">Using context.md, tech.md, uiux.md:
+
+Scaffold the project: Next.js App Router, Tailwind, Prisma + PostgreSQL adapter, full schema per tech.md. Add migration, seed users, .env.example, README quick start, docs/DEPLOY.md.
+
+Do not implement feature pages yet—only schema, db client, layout shell, and build passing.</p>
+                                <button class="copy-prompt-btn inline-flex items-center rounded-md bg-green-500 py-1 px-3 text-sm font-medium text-white hover:bg-green-600">Copy Prompt</button>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-lg shadow-md overflow-hidden border border-stone-200">
+                            <button class="accordion-button flex justify-between items-center w-full p-4 text-left font-semibold text-cyan-800 bg-cyan-50 hover:bg-cyan-100 focus:outline-none">
+                                Phase 2 — Authentication &amp; RBAC
+                            </button>
+                            <div class="accordion-content p-4">
+                                <p class="text-stone-700 font-mono text-xs bg-stone-50 p-3 rounded-md mb-3 whitespace-pre-wrap">Implement Auth.js (credentials) per tech.md.
+
+Deliver: login/register UI (uiux.md), JWT sessions with role (ADMIN | INTERN), middleware for protected routes, server helpers requireUser/requireAdmin. Use existing Prisma User model and seed accounts.
+
+Out of scope: Google OAuth (optional later).</p>
+                                <button class="copy-prompt-btn inline-flex items-center rounded-md bg-green-500 py-1 px-3 text-sm font-medium text-white hover:bg-green-600">Copy Prompt</button>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-lg shadow-md overflow-hidden border border-stone-200">
+                            <button class="accordion-button flex justify-between items-center w-full p-4 text-left font-semibold text-cyan-800 bg-cyan-50 hover:bg-cyan-100 focus:outline-none">
+                                Phase 2 — Projects CRUD &amp; Dashboard
+                            </button>
+                            <div class="accordion-content p-4">
+                                <p class="text-stone-700 font-mono text-xs bg-stone-50 p-3 rounded-md mb-3 whitespace-pre-wrap">Build project management per context.md.
+
+Implement: projects list with pipeline stepper (uiux.md), new project page, create/delete server actions with ownership checks. Dashboard shell with sidebar navigation.
+
+Requirements text on create; file upload in a later sprint.</p>
+                                <button class="copy-prompt-btn inline-flex items-center rounded-md bg-green-500 py-1 px-3 text-sm font-medium text-white hover:bg-green-600">Copy Prompt</button>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-lg shadow-md overflow-hidden border border-stone-200">
+                            <button class="accordion-button flex justify-between items-center w-full p-4 text-left font-semibold text-cyan-800 bg-cyan-50 hover:bg-cyan-100 focus:outline-none">
+                                Phase 2 — Document Upload &amp; Parsing
+                            </button>
+                            <div class="accordion-content p-4">
+                                <p class="text-stone-700 font-mono text-xs bg-stone-50 p-3 rounded-md mb-3 whitespace-pre-wrap">Implement document intake per tech.md.
+
+Add parser library (PDF/DOCX/MD/TXT), authenticated upload API, drag-and-drop on new project form. Wire extracted text into createProject flow. Enforce 10MB and MIME validation.</p>
+                                <button class="copy-prompt-btn inline-flex items-center rounded-md bg-green-500 py-1 px-3 text-sm font-medium text-white hover:bg-green-600">Copy Prompt</button>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-lg shadow-md overflow-hidden border border-stone-200">
+                            <button class="accordion-button flex justify-between items-center w-full p-4 text-left font-semibold text-cyan-800 bg-cyan-50 hover:bg-cyan-100 focus:outline-none">
+                                Phase 3 — Generate context.md &amp; tech.md (AI)
+                            </button>
+                            <div class="accordion-content p-4">
+                                <p class="text-stone-700 font-mono text-xs bg-stone-50 p-3 rounded-md mb-3 whitespace-pre-wrap">Implement AI artifact steps 1–2 per tech.md.
+
+Deliver: templates for context.md and tech.md (final markdown only), validators, generateArtifactStep for CONTEXT and TECH, Artifact storage, UI generate buttons with prerequisite gating. Use requirementsText + stack notes from Project.</p>
+                                <button class="copy-prompt-btn inline-flex items-center rounded-md bg-green-500 py-1 px-3 text-sm font-medium text-white hover:bg-green-600">Copy Prompt</button>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-lg shadow-md overflow-hidden border border-stone-200">
+                            <button class="accordion-button flex justify-between items-center w-full p-4 text-left font-semibold text-cyan-800 bg-cyan-50 hover:bg-cyan-100 focus:outline-none">
+                                Phase 3 — Generate uiux.md &amp; sprint.md (AI)
+                            </button>
+                            <div class="accordion-content p-4">
+                                <p class="text-stone-700 font-mono text-xs bg-stone-50 p-3 rounded-md mb-3 whitespace-pre-wrap">Implement AI steps 3–4 per tech.md.
+
+Deliver: uiux.md and sprint.md generation with validators, full pipeline to COMPLETE, sprint parser syncing SprintProgress table. sprint.md must include per-sprint Cursor execution prompt blocks with Goals, Tasks, Acceptance Criteria, Stack Touchpoints, Dependencies.</p>
+                                <button class="copy-prompt-btn inline-flex items-center rounded-md bg-green-500 py-1 px-3 text-sm font-medium text-white hover:bg-green-600">Copy Prompt</button>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-lg shadow-md overflow-hidden border border-stone-200">
+                            <button class="accordion-button flex justify-between items-center w-full p-4 text-left font-semibold text-cyan-800 bg-cyan-50 hover:bg-cyan-100 focus:outline-none">
+                                Phase 4 — Sprint Checklist &amp; Progress Tracking
+                            </button>
+                            <div class="accordion-content p-4">
+                                <p class="text-stone-700 font-mono text-xs bg-stone-50 p-3 rounded-md mb-3 whitespace-pre-wrap">Implement sprint progress tracking per sprint.md.
+
+Deliver: interactive checklist on project detail, server action for status updates (NOT_STARTED | IN_PROGRESS | DONE), completion percentage on project list and pipeline stepper Build step.</p>
+                                <button class="copy-prompt-btn inline-flex items-center rounded-md bg-green-500 py-1 px-3 text-sm font-medium text-white hover:bg-green-600">Copy Prompt</button>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-lg shadow-md overflow-hidden border border-stone-200">
+                            <button class="accordion-button flex justify-between items-center w-full p-4 text-left font-semibold text-cyan-800 bg-cyan-50 hover:bg-cyan-100 focus:outline-none">
+                                Phase 5 — Production Deploy &amp; Smoke Test
+                            </button>
+                            <div class="accordion-content p-4">
+                                <p class="text-stone-700 font-mono text-xs bg-stone-50 p-3 rounded-md mb-3 whitespace-pre-wrap">Deploy per docs/DEPLOY.md and tech.md.
+
+Configure Vercel + managed Postgres, run migrations and seed, set all env vars. Execute smoke test on all routes. Document production-only config in DEPLOY.md.</p>
+                                <button class="copy-prompt-btn inline-flex items-center rounded-md bg-green-500 py-1 px-3 text-sm font-medium text-white hover:bg-green-600">Copy Prompt</button>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-lg shadow-md overflow-hidden border border-indigo-300">
+                            <button class="accordion-button flex justify-between items-center w-full p-4 text-left font-semibold text-indigo-800 bg-indigo-50 hover:bg-indigo-100 focus:outline-none">
+                                Generic Capstone — Any Client Web App (Scaffold)
+                            </button>
+                            <div class="accordion-content p-4">
+                                <p class="text-stone-700 font-mono text-xs bg-stone-50 p-3 rounded-md mb-3 whitespace-pre-wrap">Read context.md, tech.md, uiux.md for this client project.
+
+Scaffold the application per tech.md: framework, database schema, folder structure, Tailwind theme tokens from uiux.md, .env.example, README. Do not build feature pages—only foundation that passes build and migrate.
+
+Constraint: Match stack exactly as written in tech.md. TypeScript strict mode.</p>
+                                <button class="copy-prompt-btn inline-flex items-center rounded-md bg-green-500 py-1 px-3 text-sm font-medium text-white hover:bg-green-600">Copy Prompt</button>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-lg shadow-md overflow-hidden border border-indigo-300">
+                            <button class="accordion-button flex justify-between items-center w-full p-4 text-left font-semibold text-indigo-800 bg-indigo-50 hover:bg-indigo-100 focus:outline-none">
+                                Generic Capstone — Feature Sprint (paste your sprint block)
+                            </button>
+                            <div class="accordion-content p-4">
+                                <p class="text-stone-700 font-mono text-xs bg-stone-50 p-3 rounded-md mb-3 whitespace-pre-wrap">Read context.md, tech.md, uiux.md. Execute ONLY the following sprint from sprint.md:
+
+[PASTE ONE SPRINT EXECUTION PROMPT BLOCK HERE]
+
+Deliver all acceptance criteria as checkboxes. Stack touchpoints must cover UI, API, and DB where applicable. Commit when all criteria pass.</p>
+                                <button class="copy-prompt-btn inline-flex items-center rounded-md bg-green-500 py-1 px-3 text-sm font-medium text-white hover:bg-green-600">Copy Prompt</button>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-lg shadow-md overflow-hidden border border-purple-300">
+                            <button class="accordion-button flex justify-between items-center w-full p-4 text-left font-semibold text-purple-800 bg-purple-50 hover:bg-purple-100 focus:outline-none">
+                                Generate sprint.md from requirements (no PromptWizard app)
+                            </button>
+                            <div class="accordion-content p-4">
+                                <p class="text-stone-700 font-mono text-xs bg-stone-50 p-3 rounded-md mb-3 whitespace-pre-wrap">Role: Act as a senior technical project manager at a software agency.
+
+Task: Generate a complete sprint.md for the attached client project.
+
+Context: [PASTE context.md and tech.md summaries or full files]
+
+Constraints:
+- Organize into Phases (## Phase N: Name)
+- Each sprint: ### Sprint X.Y: Title, Goals, Tasks, Acceptance Criteria (checkboxes), Stack Touchpoints (UI/API/DB), Dependencies, Sprint Execution Prompt (code block)
+- Every sprint must be independently deliverable full-stack
+- Include 8–14 sprints for a v1 web or mobile app
+- Each Sprint Execution Prompt must be copy-paste ready for Cursor Plan mode
+
+Format: Output valid markdown only. No commentary outside the document.</p>
+                                <button class="copy-prompt-btn inline-flex items-center rounded-md bg-green-500 py-1 px-3 text-sm font-medium text-white hover:bg-green-600">Copy Prompt</button>
+                            </div>
+                        </div>
+
+                    </div>
+                    <p class="text-xs text-stone-500 mt-4">Full 14-sprint reference plan: <a href="sprint-templates/sprints.md" class="text-indigo-600 hover:underline">sprint-templates/sprints.md</a></p>
+                </div>
+
+                <div class="bg-indigo-50 border border-indigo-200 p-5 rounded-lg">
+                    <h4 class="font-bold text-indigo-900 mb-2">Checkpoint Before Chapter 6</h4>
+                    <ul class="list-disc pl-5 text-sm text-indigo-800 space-y-1">
+                        <li>Read all four files in <code class="bg-white px-1 rounded">sprint-templates/</code></li>
+                        <li>Write user stories for your capstone project backlog</li>
+                        <li>Draft at least Phase 1–2 sprints in sprint.md format</li>
+                        <li>Know how to paste a Sprint Execution Prompt into Cursor Plan mode</li>
+                        <li>Copied at least one ready-made prompt from §5.15</li>
+                        <li>Understand PromptWizard roles, pipeline, and dashboard (§5.5–5.9)</li>
+                    </ul>
+                </div>
+            </section>
