@@ -43,14 +43,41 @@ const TARGET_TO_CHAPTER = Object.fromEntries(
 );
 
 let currentTarget = 'home';
+let currentViewMode = 'ebook';
+let currentLectureId = 'lecture-0';
+let currentSlideIndex = 0;
 let searchIndex = [];
 let searchIndexReady = false;
 let searchIndexPromise = null;
 let activeResultIndex = -1;
 
+const VIEW_MODE_KEY = 'p2p-view-mode';
+const LAST_EBOOK_KEY = 'p2p-last-ebook';
+const SLIDE_INDEX_PREFIX = 'p2p-slide-';
+
+function isLectureTarget(target) {
+    return Boolean(target && LECTURES[target]);
+}
+
+function getSlideIndexKey(lectureId) {
+    return `${SLIDE_INDEX_PREFIX}${lectureId}`;
+}
+
+function saveSlideIndex(lectureId, index) {
+    localStorage.setItem(getSlideIndexKey(lectureId), String(index));
+}
+
+function loadSlideIndex(lectureId) {
+    const stored = localStorage.getItem(getSlideIndexKey(lectureId));
+    const index = stored !== null ? parseInt(stored, 10) : 0;
+    const max = (LECTURES[lectureId]?.slides.length || 1) - 1;
+    return Number.isFinite(index) ? Math.min(Math.max(0, index), max) : 0;
+}
+
 async function loadChapter(target, options = {}) {
     const file = TARGET_TO_CHAPTER[target];
     if (!file) return;
+    if (currentViewMode !== 'ebook') return;
 
     const main = document.getElementById('chapter-container');
     main.innerHTML = '<div class="text-stone-500 py-12 text-center">Loading chapter…</div>';
@@ -60,6 +87,7 @@ async function loadChapter(target, options = {}) {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         main.innerHTML = await res.text();
         currentTarget = target;
+        localStorage.setItem(LAST_EBOOK_KEY, target);
         setActiveNav(target);
         initChapterInteractions();
         if (options.scrollToHeading) {
@@ -67,7 +95,7 @@ async function loadChapter(target, options = {}) {
         } else {
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
-        history.replaceState({ target }, '', `#${target}`);
+        history.replaceState({ mode: 'ebook', target }, '', `#${target}`);
     } catch (err) {
         main.innerHTML = `<div class="bg-red-50 text-red-800 p-6 rounded-lg">Failed to load chapter. Run via a local server (e.g. <code>python3 -m http.server 8000</code>).<br><span class="text-sm">${err.message}</span></div>`;
     }
@@ -140,13 +168,220 @@ function initCollapsibleNav() {
     });
 }
 
+function setActiveLectureNav(lectureId) {
+    document.querySelectorAll('.lecture-link').forEach((link) => {
+        link.classList.toggle('active', link.dataset.lecture === lectureId);
+    });
+}
+
+function renderSlideDots(lectureId, slideIndex, total) {
+    return Array.from({ length: total }, (_, i) =>
+        `<button type="button" class="slide-dot${i === slideIndex ? ' active' : ''}" data-slide="${i}" aria-label="Go to slide ${i + 1}"${i === slideIndex ? ' aria-current="true"' : ''}></button>`
+    ).join('');
+}
+
+function renderSlideLinks(links) {
+    if (!links?.length) return '';
+    const items = links
+        .map(
+            (link) =>
+                `<a href="${escapeHtml(link.url)}" target="_blank" rel="noopener noreferrer" class="lecture-slide-link">${escapeHtml(link.label)}</a>`
+        )
+        .join('');
+    return `<div class="lecture-slide-links">${items}</div>`;
+}
+
+function renderLectureSlide(lectureId, slideIndex) {
+    const lecture = LECTURES[lectureId];
+    if (!lecture) return '';
+
+    const slide = lecture.slides[slideIndex];
+    const total = lecture.slides.length;
+    const bullets = slide.bullets
+        .map((item) => `<li>${escapeHtml(item)}</li>`)
+        .join('');
+    const linksHtml = renderSlideLinks(slide.links);
+
+    return `
+        <section class="lecture-deck" data-lecture="${escapeHtml(lectureId)}" data-slide="${slideIndex}">
+            <div class="lecture-deck-header">
+                <p class="lecture-meta">${escapeHtml(lecture.title)} · Slide ${slideIndex + 1} of ${total}</p>
+                <button type="button" id="slide-fullscreen" class="slide-fullscreen-btn" aria-label="Enter fullscreen">
+                    <span aria-hidden="true">⛶</span> Fullscreen
+                </button>
+            </div>
+            <div class="lecture-slide" id="lecture-slide-stage">
+                <h2 class="lecture-slide-title">${escapeHtml(slide.title)}</h2>
+                <ul class="lecture-slide-bullets">${bullets}</ul>
+                ${linksHtml}
+            </div>
+            <div class="slide-nav">
+                <button type="button" id="slide-prev" class="slide-nav-btn"${slideIndex === 0 ? ' disabled' : ''}>← Prev</button>
+                <button type="button" id="slide-next" class="slide-nav-btn"${slideIndex >= total - 1 ? ' disabled' : ''}>Next →</button>
+            </div>
+            <div class="slide-dots" role="tablist" aria-label="Slide progress">
+                ${renderSlideDots(lectureId, slideIndex, total)}
+            </div>
+        </section>`;
+}
+
+function loadLecture(lectureId, slideIndex) {
+    const lecture = LECTURES[lectureId];
+    if (!lecture) return;
+    if (currentViewMode !== 'lecture') return;
+
+    const total = lecture.slides.length;
+    const index = Math.min(Math.max(0, slideIndex ?? loadSlideIndex(lectureId)), total - 1);
+
+    const main = document.getElementById('chapter-container');
+    main.innerHTML = renderLectureSlide(lectureId, index);
+
+    currentLectureId = lectureId;
+    currentSlideIndex = index;
+    saveSlideIndex(lectureId, index);
+    setActiveLectureNav(lectureId);
+
+    history.replaceState({ mode: 'lecture', lectureId, slideIndex: index }, '', `#${lectureId}`);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    initSlideNavigation();
+}
+
+function updateFullscreenButton(btn) {
+    if (!btn) return;
+    const isFs = document.fullscreenElement?.id === 'lecture-slide-stage';
+    btn.innerHTML = isFs
+        ? '<span aria-hidden="true">✕</span> Exit fullscreen'
+        : '<span aria-hidden="true">⛶</span> Fullscreen';
+    btn.setAttribute('aria-label', isFs ? 'Exit fullscreen' : 'Enter fullscreen');
+}
+
+async function toggleSlideFullscreen(slideEl, btn) {
+    if (!slideEl) return;
+    try {
+        if (document.fullscreenElement === slideEl) {
+            await document.exitFullscreen();
+        } else {
+            await slideEl.requestFullscreen();
+        }
+    } catch {
+        /* fullscreen not supported or denied */
+    }
+    updateFullscreenButton(btn);
+}
+
+function initSlideNavigation() {
+    const deck = document.querySelector('.lecture-deck');
+    if (!deck) return;
+
+    const lectureId = deck.dataset.lecture;
+    const slideIndex = parseInt(deck.dataset.slide, 10);
+    const fsBtn = document.getElementById('slide-fullscreen');
+    const slideEl = document.getElementById('lecture-slide-stage');
+
+    fsBtn?.addEventListener('click', () => toggleSlideFullscreen(slideEl, fsBtn));
+
+    document.getElementById('slide-prev')?.addEventListener('click', () => {
+        if (slideIndex > 0) loadLecture(lectureId, slideIndex - 1);
+    });
+
+    document.getElementById('slide-next')?.addEventListener('click', () => {
+        const total = LECTURES[lectureId].slides.length;
+        if (slideIndex < total - 1) loadLecture(lectureId, slideIndex + 1);
+    });
+
+    deck.querySelectorAll('.slide-dot').forEach((dot) => {
+        dot.addEventListener('click', () => {
+            loadLecture(lectureId, parseInt(dot.dataset.slide, 10));
+        });
+    });
+}
+
+function setViewMode(mode, options = {}) {
+    if (mode !== 'ebook' && mode !== 'lecture') return;
+
+    currentViewMode = mode;
+    localStorage.setItem(VIEW_MODE_KEY, mode);
+
+    document.body.classList.toggle('view-ebook', mode === 'ebook');
+    document.body.classList.toggle('view-lecture', mode === 'lecture');
+
+    document.getElementById('ebook-nav')?.classList.toggle('hidden', mode !== 'ebook');
+    document.getElementById('lecture-nav')?.classList.toggle('hidden', mode !== 'lecture');
+
+    document.querySelectorAll('.mode-toggle-btn').forEach((btn) => {
+        const isActive = btn.dataset.mode === mode;
+        btn.classList.toggle('active', isActive);
+        btn.setAttribute('aria-pressed', String(isActive));
+    });
+
+    if (mode === 'lecture') {
+        const lectureId = options.lectureId || currentLectureId || 'lecture-0';
+        const slideIndex = options.slideIndex ?? loadSlideIndex(lectureId);
+        loadLecture(lectureId, slideIndex);
+    } else {
+        const target = options.target || localStorage.getItem(LAST_EBOOK_KEY) || currentTarget || 'home';
+        const resolved = TARGET_TO_CHAPTER[target] ? target : 'home';
+        loadChapter(resolved);
+    }
+}
+
+function initViewMode() {
+    document.querySelectorAll('.mode-toggle-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            if (btn.dataset.mode === currentViewMode) return;
+            setViewMode(btn.dataset.mode);
+        });
+    });
+
+    document.querySelectorAll('.lecture-link').forEach((link) => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (currentViewMode !== 'lecture') {
+                setViewMode('lecture', { lectureId: link.dataset.lecture });
+            } else {
+                loadLecture(link.dataset.lecture, loadSlideIndex(link.dataset.lecture));
+            }
+        });
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (currentViewMode !== 'lecture') return;
+        if (e.target.matches('input, textarea, select')) return;
+
+        if (e.key === 'ArrowLeft') {
+            e.preventDefault();
+            if (currentSlideIndex > 0) loadLecture(currentLectureId, currentSlideIndex - 1);
+        } else if (e.key === 'ArrowRight') {
+            e.preventDefault();
+            const total = LECTURES[currentLectureId]?.slides.length || 0;
+            if (currentSlideIndex < total - 1) loadLecture(currentLectureId, currentSlideIndex + 1);
+        }
+    });
+
+    const hash = window.location.hash.replace('#', '');
+    if (isLectureTarget(hash)) {
+        setViewMode('lecture', { lectureId: hash, slideIndex: loadSlideIndex(hash) });
+    } else {
+        const storedMode = localStorage.getItem(VIEW_MODE_KEY) || 'ebook';
+        if (storedMode === 'lecture') {
+            setViewMode('lecture', { lectureId: 'lecture-0' });
+        } else if (hash && TARGET_TO_CHAPTER[hash]) {
+            setViewMode('ebook', { target: hash });
+        } else {
+            setViewMode('ebook', { target: 'home' });
+        }
+    }
+}
+
 function initNavigation() {
     initCollapsibleNav();
 
     document.querySelectorAll('.nav-link, .nav-sublink').forEach((link) => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
-            loadChapter(link.dataset.target);
+            if (currentViewMode !== 'ebook') setViewMode('ebook', { target: link.dataset.target });
+            else loadChapter(link.dataset.target);
         });
     });
 
@@ -154,27 +389,43 @@ function initNavigation() {
         const link = e.target.closest('a[href^="#"]');
         if (!link) return;
         const target = link.getAttribute('href').slice(1);
-        if (target && TARGET_TO_CHAPTER[target]) {
+        if (isLectureTarget(target)) {
             e.preventDefault();
-            loadChapter(target);
+            setViewMode('lecture', { lectureId: target, slideIndex: loadSlideIndex(target) });
+        } else if (target && TARGET_TO_CHAPTER[target]) {
+            e.preventDefault();
+            if (currentViewMode !== 'ebook') setViewMode('ebook', { target });
+            else loadChapter(target);
         }
     });
 
-    const hash = window.location.hash.replace('#', '');
-    if (hash && TARGET_TO_CHAPTER[hash]) {
-        loadChapter(hash);
-    } else {
-        loadChapter('home');
-    }
-
     window.addEventListener('popstate', (e) => {
-        const target = e.state?.target || window.location.hash.replace('#', '') || 'home';
-        if (TARGET_TO_CHAPTER[target]) loadChapter(target);
+        const state = e.state || {};
+        const hash = window.location.hash.replace('#', '');
+
+        if (state.mode === 'lecture' || isLectureTarget(hash)) {
+            const lectureId = state.lectureId || hash;
+            const slideIndex = state.slideIndex ?? loadSlideIndex(lectureId);
+            if (currentViewMode !== 'lecture') setViewMode('lecture', { lectureId, slideIndex });
+            else loadLecture(lectureId, slideIndex);
+        } else {
+            const target = state.target || hash || 'home';
+            if (TARGET_TO_CHAPTER[target]) {
+                if (currentViewMode !== 'ebook') setViewMode('ebook', { target });
+                else loadChapter(target);
+            }
+        }
     });
 
     window.addEventListener('hashchange', () => {
         const target = window.location.hash.replace('#', '');
-        if (TARGET_TO_CHAPTER[target] && target !== currentTarget) loadChapter(target);
+
+        if (isLectureTarget(target)) {
+            if (currentViewMode !== 'lecture') setViewMode('lecture', { lectureId: target, slideIndex: loadSlideIndex(target) });
+            else if (target !== currentLectureId) loadLecture(target, loadSlideIndex(target));
+        } else if (TARGET_TO_CHAPTER[target] && currentViewMode === 'ebook' && target !== currentTarget) {
+            loadChapter(target);
+        }
     });
 }
 
@@ -555,6 +806,11 @@ function initGlobalSearch() {
 
 document.addEventListener('DOMContentLoaded', () => {
     initNavigation();
+    initViewMode();
     initGlobalSearch();
     ensureSearchIndex();
+
+    document.addEventListener('fullscreenchange', () => {
+        updateFullscreenButton(document.getElementById('slide-fullscreen'));
+    });
 });

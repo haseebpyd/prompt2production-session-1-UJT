@@ -3,6 +3,298 @@
             font-family: 'Inter', sans-serif;
         }
 
+        /* App header + mode toggle */
+        .app-header {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            padding: 0.625rem 1rem;
+            background: #fff;
+            border-bottom: 1px solid #e7e5e4;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+        }
+        .app-header-brand {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            min-width: 0;
+        }
+        .app-header-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: #4338ca;
+            line-height: 1.2;
+        }
+        .app-header-subtitle {
+            font-size: 0.7rem;
+            color: #78716c;
+        }
+        .mode-toggle {
+            display: inline-flex;
+            padding: 0.2rem;
+            background: #f5f5f4;
+            border-radius: 0.5rem;
+            border: 1px solid #e7e5e4;
+            flex-shrink: 0;
+        }
+        .mode-toggle-btn {
+            padding: 0.35rem 0.85rem;
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: #57534e;
+            background: transparent;
+            border: none;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            transition: background-color 0.15s ease, color 0.15s ease;
+        }
+        .mode-toggle-btn:hover:not(.active) {
+            color: #312e81;
+            background: #eef2ff;
+        }
+        .mode-toggle-btn.active {
+            background: #4f46e5;
+            color: #fff;
+            font-weight: 600;
+        }
+        .mode-toggle-btn:focus-visible {
+            outline: 2px solid #6366f1;
+            outline-offset: 1px;
+        }
+
+        /* Lecture sidebar links */
+        .lecture-link {
+            transition: all 0.2s ease;
+        }
+        .lecture-link.active {
+            background-color: #4f46e5;
+            color: #ffffff;
+            font-weight: 600;
+        }
+        .lecture-link:not(.active):hover {
+            background-color: #eef2ff;
+            color: #312e81;
+        }
+
+        /* Lecture slide deck */
+        .view-lecture #chapter-container {
+            display: flex;
+            flex-direction: column;
+            min-height: calc(100vh - 3rem);
+        }
+        .lecture-deck {
+            width: 100%;
+            max-width: 72rem;
+            margin: 0 auto;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            animation: fadeIn 0.2s ease;
+        }
+        .lecture-deck-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        .lecture-meta {
+            font-size: 0.9rem;
+            color: #78716c;
+            margin: 0;
+            text-align: left;
+        }
+        .slide-fullscreen-btn {
+            flex-shrink: 0;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.45rem 0.85rem;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #4338ca;
+            background: #eef2ff;
+            border: 1px solid #c7d2fe;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: background-color 0.15s ease;
+        }
+        .slide-fullscreen-btn:hover {
+            background: #e0e7ff;
+        }
+        .slide-fullscreen-btn:focus-visible {
+            outline: 2px solid #6366f1;
+            outline-offset: 2px;
+        }
+        .lecture-slide {
+            background: #fff;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e7e5e4;
+            padding: 2.5rem 2rem;
+            min-height: calc(100vh - 15rem);
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .lecture-slide-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1c1917;
+            margin-bottom: 1.75rem;
+            line-height: 1.2;
+        }
+        @media (min-width: 768px) {
+            .lecture-slide {
+                padding: 3.5rem 4rem;
+                min-height: calc(100vh - 13rem);
+            }
+            .lecture-slide-title {
+                font-size: 2.75rem;
+            }
+            .lecture-slide-bullets {
+                font-size: 1.35rem;
+            }
+        }
+        @media (min-width: 1024px) {
+            .lecture-slide {
+                padding: 4rem 5rem;
+            }
+            .lecture-slide-title {
+                font-size: 3.25rem;
+            }
+            .lecture-slide-bullets {
+                font-size: 1.5rem;
+            }
+        }
+        .lecture-slide-bullets {
+            list-style: disc;
+            padding-left: 1.75rem;
+            color: #44403c;
+            font-size: 1.15rem;
+            line-height: 1.75;
+        }
+        .lecture-slide-bullets li + li {
+            margin-top: 0.85rem;
+        }
+        .lecture-slide-links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 1.75rem;
+            padding-top: 1.25rem;
+            border-top: 1px solid #e7e5e4;
+        }
+        .lecture-slide-link {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.4rem 0.9rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #4338ca;
+            background: #eef2ff;
+            border: 1px solid #c7d2fe;
+            border-radius: 9999px;
+            text-decoration: none;
+            transition: background-color 0.15s ease, color 0.15s ease;
+        }
+        .lecture-slide-link:hover {
+            background: #4f46e5;
+            color: #fff;
+            border-color: #4f46e5;
+        }
+        .lecture-slide-link:focus-visible {
+            outline: 2px solid #6366f1;
+            outline-offset: 2px;
+        }
+        .lecture-slide:fullscreen .lecture-slide-links {
+            margin-top: 2.5rem;
+        }
+        .lecture-slide:fullscreen .lecture-slide-link {
+            font-size: 1rem;
+            padding: 0.5rem 1.1rem;
+        }
+        .lecture-slide:fullscreen {
+            border-radius: 0;
+            border: none;
+            padding: 4rem 5rem;
+            min-height: 100vh;
+            justify-content: center;
+            background: #fff;
+        }
+        .lecture-slide:fullscreen .lecture-slide-title {
+            font-size: clamp(2.5rem, 5vw, 4rem);
+        }
+        .lecture-slide:fullscreen .lecture-slide-bullets {
+            font-size: clamp(1.35rem, 2.5vw, 2rem);
+            line-height: 1.8;
+        }
+        .slide-nav {
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+        .slide-nav-btn {
+            padding: 0.6rem 1.25rem;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #4338ca;
+            background: #eef2ff;
+            border: 1px solid #c7d2fe;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: background-color 0.15s ease;
+        }
+        .slide-nav-btn:hover:not(:disabled) {
+            background: #e0e7ff;
+        }
+        .slide-nav-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        .slide-nav-btn:focus-visible {
+            outline: 2px solid #6366f1;
+            outline-offset: 2px;
+        }
+        .slide-dots {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 0.4rem;
+            margin-top: 1.25rem;
+        }
+        .slide-dot {
+            width: 0.5rem;
+            height: 0.5rem;
+            border-radius: 50%;
+            border: none;
+            background: #d6d3d1;
+            cursor: pointer;
+            padding: 0;
+            transition: background-color 0.15s ease, transform 0.15s ease;
+        }
+        .slide-dot:hover {
+            background: #a8a29e;
+        }
+        .slide-dot.active {
+            background: #4f46e5;
+            transform: scale(1.25);
+        }
+        .slide-dot:focus-visible {
+            outline: 2px solid #6366f1;
+            outline-offset: 2px;
+        }
+
+        .view-lecture #global-search-wrap {
+            display: none;
+        }
+
         /* Chapter container (one chapter loaded at a time via app.js) */
         .chapter {
             animation: fadeIn 0.2s ease;
