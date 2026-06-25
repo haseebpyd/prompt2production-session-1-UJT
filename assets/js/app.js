@@ -43,7 +43,7 @@ const TARGET_TO_CHAPTER = Object.fromEntries(
 );
 
 let currentTarget = 'home';
-let currentViewMode = 'ebook';
+let currentViewMode = 'lecture';
 let currentLectureId = 'lecture-0';
 let currentSlideIndex = 0;
 let searchIndex = [];
@@ -53,7 +53,91 @@ let activeResultIndex = -1;
 
 const VIEW_MODE_KEY = 'p2p-view-mode';
 const LAST_EBOOK_KEY = 'p2p-last-ebook';
+const THEME_KEY = 'p2p-theme';
 const SLIDE_INDEX_PREFIX = 'p2p-slide-';
+const MOBILE_SIDEBAR_MQ = '(max-width: 767px)';
+
+function isMobileSidebar() {
+    return window.matchMedia(MOBILE_SIDEBAR_MQ).matches;
+}
+
+function setSidebarOpen(open) {
+    document.body.classList.toggle('sidebar-open', open);
+    const btn = document.getElementById('sidebar-toggle');
+    const backdrop = document.getElementById('sidebar-backdrop');
+    if (btn) {
+        btn.setAttribute('aria-expanded', String(open));
+        btn.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+        const icon = btn.querySelector('.sidebar-toggle-icon');
+        if (icon) icon.textContent = open ? '✕' : '☰';
+    }
+    backdrop?.setAttribute('aria-hidden', String(!open));
+}
+
+function closeMobileSidebar() {
+    if (isMobileSidebar()) setSidebarOpen(false);
+}
+
+function updateSidebarToggleTarget(mode) {
+    const navId = mode === 'ebook' ? 'ebook-nav' : 'lecture-nav';
+    document.getElementById('sidebar-toggle')?.setAttribute('aria-controls', navId);
+}
+
+function initMobileSidebar() {
+    const toggle = document.getElementById('sidebar-toggle');
+    const backdrop = document.getElementById('sidebar-backdrop');
+
+    toggle?.addEventListener('click', () => {
+        setSidebarOpen(!document.body.classList.contains('sidebar-open'));
+    });
+
+    backdrop?.addEventListener('click', closeMobileSidebar);
+
+    document.querySelectorAll('#ebook-nav a, #lecture-nav a').forEach((link) => {
+        link.addEventListener('click', closeMobileSidebar);
+    });
+
+    window.matchMedia(MOBILE_SIDEBAR_MQ).addEventListener('change', (e) => {
+        if (!e.matches) setSidebarOpen(false);
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key !== 'Escape' || !document.body.classList.contains('sidebar-open')) return;
+        if (e.target.matches('input, textarea, select')) return;
+        closeMobileSidebar();
+    });
+}
+
+function getPreferredTheme() {
+    const stored = localStorage.getItem(THEME_KEY);
+    if (stored === 'light' || stored === 'dark') return stored;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+
+function applyTheme(theme) {
+    const isDark = theme === 'dark';
+    document.documentElement.classList.toggle('dark', isDark);
+    localStorage.setItem(THEME_KEY, theme);
+
+    const toggle = document.getElementById('theme-toggle');
+    if (toggle) {
+        toggle.setAttribute('aria-pressed', String(isDark));
+        toggle.textContent = isDark ? 'Light' : 'Dark';
+        toggle.setAttribute('aria-label', isDark ? 'Switch to light mode' : 'Switch to dark mode');
+    }
+}
+
+function initTheme() {
+    applyTheme(getPreferredTheme());
+
+    const toggle = document.getElementById('theme-toggle');
+    if (!toggle) return;
+
+    toggle.addEventListener('click', () => {
+        const next = document.documentElement.classList.contains('dark') ? 'light' : 'dark';
+        applyTheme(next);
+    });
+}
 
 function isLectureTarget(target) {
     return Boolean(target && LECTURES[target]);
@@ -80,7 +164,7 @@ async function loadChapter(target, options = {}) {
     if (currentViewMode !== 'ebook') return;
 
     const main = document.getElementById('chapter-container');
-    main.innerHTML = '<div class="text-stone-500 py-12 text-center">Loading chapter…</div>';
+    main.innerHTML = '<div class="text-stone-500 dark:text-stone-400 py-12 text-center">Loading chapter…</div>';
 
     try {
         const res = await fetch(`chapters/${file}.html`);
@@ -225,6 +309,40 @@ function renderLectureSlide(lectureId, slideIndex) {
         </section>`;
 }
 
+function patchLectureDeck(deck, lectureId, slideIndex) {
+    const lecture = LECTURES[lectureId];
+    const slide = lecture.slides[slideIndex];
+    const total = lecture.slides.length;
+
+    deck.dataset.slide = String(slideIndex);
+    deck.querySelector('.lecture-meta').textContent = `${lecture.title} · Slide ${slideIndex + 1} of ${total}`;
+
+    const stage = deck.querySelector('#lecture-slide-stage');
+    stage.querySelector('.lecture-slide-title').textContent = slide.title;
+    stage.querySelector('.lecture-slide-bullets').innerHTML = slide.bullets
+        .map((item) => `<li>${escapeHtml(item)}</li>`)
+        .join('');
+
+    const existingLinks = stage.querySelector('.lecture-slide-links');
+    const linksHtml = renderSlideLinks(slide.links);
+    if (linksHtml) {
+        if (existingLinks) existingLinks.outerHTML = linksHtml;
+        else stage.insertAdjacentHTML('beforeend', linksHtml);
+    } else if (existingLinks) {
+        existingLinks.remove();
+    }
+
+    const prev = deck.querySelector('#slide-prev');
+    const next = deck.querySelector('#slide-next');
+    if (prev) prev.disabled = slideIndex === 0;
+    if (next) next.disabled = slideIndex >= total - 1;
+
+    const dots = deck.querySelector('.slide-dots');
+    if (dots) dots.innerHTML = renderSlideDots(lectureId, slideIndex, total);
+
+    updateFullscreenButton(deck.querySelector('#slide-fullscreen'));
+}
+
 function loadLecture(lectureId, slideIndex) {
     const lecture = LECTURES[lectureId];
     if (!lecture) return;
@@ -234,7 +352,14 @@ function loadLecture(lectureId, slideIndex) {
     const index = Math.min(Math.max(0, slideIndex ?? loadSlideIndex(lectureId)), total - 1);
 
     const main = document.getElementById('chapter-container');
-    main.innerHTML = renderLectureSlide(lectureId, index);
+    const existingDeck = main.querySelector('.lecture-deck');
+    const sameLecture = existingDeck?.dataset.lecture === lectureId;
+
+    if (sameLecture) {
+        patchLectureDeck(existingDeck, lectureId, index);
+    } else {
+        main.innerHTML = renderLectureSlide(lectureId, index);
+    }
 
     currentLectureId = lectureId;
     currentSlideIndex = index;
@@ -242,9 +367,7 @@ function loadLecture(lectureId, slideIndex) {
     setActiveLectureNav(lectureId);
 
     history.replaceState({ mode: 'lecture', lectureId, slideIndex: index }, '', `#${lectureId}`);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-
-    initSlideNavigation();
+    if (!document.fullscreenElement) window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function updateFullscreenButton(btn) {
@@ -270,30 +393,39 @@ async function toggleSlideFullscreen(slideEl, btn) {
     updateFullscreenButton(btn);
 }
 
+let slideNavigationReady = false;
+
 function initSlideNavigation() {
-    const deck = document.querySelector('.lecture-deck');
-    if (!deck) return;
+    if (slideNavigationReady) return;
+    slideNavigationReady = true;
 
-    const lectureId = deck.dataset.lecture;
-    const slideIndex = parseInt(deck.dataset.slide, 10);
-    const fsBtn = document.getElementById('slide-fullscreen');
-    const slideEl = document.getElementById('lecture-slide-stage');
+    document.getElementById('chapter-container')?.addEventListener('click', (e) => {
+        const deck = e.target.closest('.lecture-deck');
+        if (!deck) return;
 
-    fsBtn?.addEventListener('click', () => toggleSlideFullscreen(slideEl, fsBtn));
+        const lectureId = deck.dataset.lecture;
+        const slideIndex = parseInt(deck.dataset.slide, 10);
 
-    document.getElementById('slide-prev')?.addEventListener('click', () => {
-        if (slideIndex > 0) loadLecture(lectureId, slideIndex - 1);
-    });
+        if (e.target.closest('#slide-fullscreen')) {
+            const slideEl = deck.querySelector('#lecture-slide-stage');
+            const fsBtn = deck.querySelector('#slide-fullscreen');
+            toggleSlideFullscreen(slideEl, fsBtn);
+            return;
+        }
 
-    document.getElementById('slide-next')?.addEventListener('click', () => {
-        const total = LECTURES[lectureId].slides.length;
-        if (slideIndex < total - 1) loadLecture(lectureId, slideIndex + 1);
-    });
+        if (e.target.closest('#slide-prev')) {
+            if (slideIndex > 0) loadLecture(lectureId, slideIndex - 1);
+            return;
+        }
 
-    deck.querySelectorAll('.slide-dot').forEach((dot) => {
-        dot.addEventListener('click', () => {
-            loadLecture(lectureId, parseInt(dot.dataset.slide, 10));
-        });
+        if (e.target.closest('#slide-next')) {
+            const total = LECTURES[lectureId]?.slides.length || 0;
+            if (slideIndex < total - 1) loadLecture(lectureId, slideIndex + 1);
+            return;
+        }
+
+        const dot = e.target.closest('.slide-dot');
+        if (dot) loadLecture(lectureId, parseInt(dot.dataset.slide, 10));
     });
 }
 
@@ -308,6 +440,7 @@ function setViewMode(mode, options = {}) {
 
     document.getElementById('ebook-nav')?.classList.toggle('hidden', mode !== 'ebook');
     document.getElementById('lecture-nav')?.classList.toggle('hidden', mode !== 'lecture');
+    updateSidebarToggleTarget(mode);
 
     document.querySelectorAll('.mode-toggle-btn').forEach((btn) => {
         const isActive = btn.dataset.mode === mode;
@@ -327,6 +460,8 @@ function setViewMode(mode, options = {}) {
 }
 
 function initViewMode() {
+    initSlideNavigation();
+
     document.querySelectorAll('.mode-toggle-btn').forEach((btn) => {
         btn.addEventListener('click', () => {
             if (btn.dataset.mode === currentViewMode) return;
@@ -363,7 +498,7 @@ function initViewMode() {
     if (isLectureTarget(hash)) {
         setViewMode('lecture', { lectureId: hash, slideIndex: loadSlideIndex(hash) });
     } else {
-        const storedMode = localStorage.getItem(VIEW_MODE_KEY) || 'ebook';
+        const storedMode = localStorage.getItem(VIEW_MODE_KEY) || 'lecture';
         if (storedMode === 'lecture') {
             setViewMode('lecture', { lectureId: 'lecture-0' });
         } else if (hash && TARGET_TO_CHAPTER[hash]) {
@@ -805,6 +940,8 @@ function initGlobalSearch() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    initTheme();
+    initMobileSidebar();
     initNavigation();
     initViewMode();
     initGlobalSearch();
