@@ -1,0 +1,370 @@
+<section id="frontend-roadmap" class="chapter space-y-8">
+                <header>
+                    <h2 class="text-4xl font-bold text-stone-900">Chapter 11: Complete Frontend Roadmap (Beginner to Pro)</h2>
+                    <p class="text-lg text-stone-600 mt-2">A self-study guide from web fundamentals to production-grade frontend engineering. Prompt2Production focuses on AI-native development — use this roadmap to build depth alongside your sprints and portfolio projects.</p>
+                </header>
+
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-2xl font-semibold text-indigo-700 mb-4">How to Use This Roadmap</h3>
+                    <ul class="list-disc pl-5 text-stone-700 space-y-2 mb-4">
+                        <li><strong>Follow phases in order</strong> — each phase builds on the previous one.</li>
+                        <li><strong>Build portfolio projects</strong> as you go — theory sticks when you ship something real.</li>
+                        <li><strong>Revisit phases</strong> when you get stuck on a sprint — look up the exact topic you need.</li>
+                        <li><strong>Pair with the program</strong> — Chapters 4, 6, and 7 are your hands-on path; this chapter is your reference for going deeper.</li>
+                    </ul>
+                    <p class="text-sm text-stone-500 mb-4">Click any phase below to expand topics and explanations.</p>
+                    <div class="deployment-flow overflow-x-auto pb-2">
+                        <div class="flow-item"><div class="bg-indigo-50 p-2 rounded-lg text-center min-w-[4.5rem]"><p class="font-semibold text-xs">P0</p><p class="text-[10px] text-stone-500">Web</p></div></div>
+                        <span class="flow-arrow">→</span>
+                        <div class="flow-item"><div class="bg-blue-50 p-2 rounded-lg text-center min-w-[4.5rem]"><p class="font-semibold text-xs">P1–2</p><p class="text-[10px] text-stone-500">HTML/CSS</p></div></div>
+                        <span class="flow-arrow">→</span>
+                        <div class="flow-item"><div class="bg-purple-50 p-2 rounded-lg text-center min-w-[4.5rem]"><p class="font-semibold text-xs">P3–4</p><p class="text-[10px] text-stone-500">CSS FW</p></div></div>
+                        <span class="flow-arrow">→</span>
+                        <div class="flow-item"><div class="bg-amber-50 p-2 rounded-lg text-center min-w-[4.5rem]"><p class="font-semibold text-xs">P5–6</p><p class="text-[10px] text-stone-500">JS/TS</p></div></div>
+                        <span class="flow-arrow">→</span>
+                        <div class="flow-item"><div class="bg-green-50 p-2 rounded-lg text-center min-w-[4.5rem]"><p class="font-semibold text-xs">P7</p><p class="text-[10px] text-stone-500">Git</p></div></div>
+                        <span class="flow-arrow">→</span>
+                        <div class="flow-item"><div class="bg-cyan-50 p-2 rounded-lg text-center min-w-[4.5rem]"><p class="font-semibold text-xs">P8–9</p><p class="text-[10px] text-stone-500">React/Next</p></div></div>
+                        <span class="flow-arrow">→</span>
+                        <div class="flow-item"><div class="bg-rose-50 p-2 rounded-lg text-center min-w-[4.5rem]"><p class="font-semibold text-xs">P10–15</p><p class="text-[10px] text-stone-500">Pro</p></div></div>
+                    </div>
+                </div>
+
+                <div id="roadmap-accordion" class="space-y-3">
+
+                    <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                        <button class="accordion-button flex justify-between items-center w-full p-4 text-left font-semibold text-lg text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none">
+                            Phase 0: Internet &amp; Web Fundamentals
+                        </button>
+                        <div class="accordion-content p-4">
+                            <p class="text-stone-600 mb-4">Before writing code, understand how the web works. This foundation explains what happens when a user visits your app.</p>
+                            <ul class="space-y-3 text-stone-700 text-sm">
+                                <li><strong>Internet</strong> — A global network of connected computers. Your app lives on a server; users reach it through browsers.</li>
+                                <li><strong>Browser</strong> — Software (Chrome, Firefox, Safari) that requests pages, runs HTML/CSS/JS, and renders the UI.</li>
+                                <li><strong>Server</strong> — A computer that hosts your app and responds to requests. Can be a cloud VM, serverless function, or container.</li>
+                                <li><strong>DNS</strong> — Translates domain names (e.g. <code class="bg-stone-100 px-1 rounded">myapp.com</code>) into IP addresses so browsers know where to connect.</li>
+                                <li><strong>HTTP/HTTPS</strong> — The protocol for request/response. HTTPS adds encryption (TLS) — always use it in production.</li>
+                                <li><strong>APIs</strong> — Interfaces that let apps talk to each other. Your frontend calls APIs to get or send data.</li>
+                                <li><strong>JSON</strong> — Lightweight data format for APIs. Keys and values — easy for JavaScript to parse.</li>
+                                <li><strong>Cookies</strong> — Small text files stored in the browser, often used for sessions and preferences.</li>
+                                <li><strong>Storage</strong> — <code class="bg-stone-100 px-1 rounded">localStorage</code> and <code class="bg-stone-100 px-1 rounded">sessionStorage</code> let you persist data in the browser without a server.</li>
+                                <li><strong>CORS</strong> — Browser security rule: a page on domain A cannot call an API on domain B unless the server allows it.</li>
+                                <li><strong>CDN</strong> — Content Delivery Network — caches static assets (images, JS, CSS) near users for faster load times.</li>
+                                <li><strong>Security</strong> — Basics: HTTPS, never expose API keys in frontend code, validate input, use secure cookies.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                        <button class="accordion-button flex justify-between items-center w-full p-4 text-left font-semibold text-lg text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none">
+                            Phase 1: HTML5
+                        </button>
+                        <div class="accordion-content p-4">
+                            <p class="text-stone-600 mb-4">HTML is the skeleton of every web page. Learn structure first — everything else builds on top.</p>
+                            <ul class="space-y-3 text-stone-700 text-sm">
+                                <li><strong>Structure</strong> — Document outline: <code class="bg-stone-100 px-1 rounded">&lt;!DOCTYPE html&gt;</code>, <code class="bg-stone-100 px-1 rounded">&lt;html&gt;</code>, <code class="bg-stone-100 px-1 rounded">&lt;head&gt;</code>, <code class="bg-stone-100 px-1 rounded">&lt;body&gt;</code>.</li>
+                                <li><strong>Elements</strong> — Building blocks: headings, paragraphs, links, images, divs, spans.</li>
+                                <li><strong>Semantic HTML</strong> — Use meaningful tags (<code class="bg-stone-100 px-1 rounded">&lt;header&gt;</code>, <code class="bg-stone-100 px-1 rounded">&lt;nav&gt;</code>, <code class="bg-stone-100 px-1 rounded">&lt;main&gt;</code>, <code class="bg-stone-100 px-1 rounded">&lt;article&gt;</code>) instead of only <code class="bg-stone-100 px-1 rounded">&lt;div&gt;</code> everywhere.</li>
+                                <li><strong>Forms</strong> — Inputs, labels, buttons, validation attributes. How users submit data to your app.</li>
+                                <li><strong>Tables</strong> — Rows and columns for tabular data. Use sparingly for layout — prefer CSS Grid/Flexbox.</li>
+                                <li><strong>Accessibility</strong> — Alt text, labels, keyboard navigation, ARIA when needed. Everyone should use your app.</li>
+                                <li><strong>SEO</strong> — Title, meta description, heading hierarchy, semantic markup — helps search engines index your pages.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                        <button class="accordion-button flex justify-between items-center w-full p-4 text-left font-semibold text-lg text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none">
+                            Phase 2: CSS3
+                        </button>
+                        <div class="accordion-content p-4">
+                            <p class="text-stone-600 mb-4">CSS controls how pages look — layout, colors, typography, and motion. Master layout before frameworks.</p>
+                            <ul class="space-y-3 text-stone-700 text-sm">
+                                <li><strong>Selectors</strong> — Target elements by tag, class, ID, attribute, or pseudo-classes (<code class="bg-stone-100 px-1 rounded">:hover</code>, <code class="bg-stone-100 px-1 rounded">:focus</code>).</li>
+                                <li><strong>Box Model</strong> — Every element is a box: content, padding, border, margin. Understand this to fix spacing bugs.</li>
+                                <li><strong>Flexbox</strong> — One-dimensional layouts (rows or columns). Great for nav bars, cards, centering.</li>
+                                <li><strong>Grid</strong> — Two-dimensional layouts. Perfect for dashboards, page sections, complex grids.</li>
+                                <li><strong>Responsive Design</strong> — Media queries, fluid units (<code class="bg-stone-100 px-1 rounded">rem</code>, <code class="bg-stone-100 px-1 rounded">%</code>, <code class="bg-stone-100 px-1 rounded">vw</code>). Mobile-first approach.</li>
+                                <li><strong>Animations</strong> — Transitions and keyframe animations for polish — buttons, modals, loading states.</li>
+                                <li><strong>Variables</strong> — CSS custom properties (<code class="bg-stone-100 px-1 rounded">--color-primary</code>) for theming and consistency.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                        <button class="accordion-button flex justify-between items-center w-full p-4 text-left font-semibold text-lg text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none">
+                            Phase 3: Bootstrap
+                        </button>
+                        <div class="accordion-content p-4">
+                            <p class="text-stone-600 mb-4">Bootstrap is a component-based CSS framework. Ship responsive UIs faster with pre-built patterns.</p>
+                            <ul class="space-y-3 text-stone-700 text-sm">
+                                <li><strong>Grid</strong> — 12-column responsive grid. <code class="bg-stone-100 px-1 rounded">container</code>, <code class="bg-stone-100 px-1 rounded">row</code>, <code class="bg-stone-100 px-1 rounded">col-*</code> classes for layouts.</li>
+                                <li><strong>Components</strong> — Navbar, cards, modals, alerts, buttons — ready to use with consistent styling.</li>
+                                <li><strong>Utilities</strong> — Spacing (<code class="bg-stone-100 px-1 rounded">m-3</code>, <code class="bg-stone-100 px-1 rounded">p-2</code>), colors, display, flex helpers.</li>
+                                <li><strong>Responsive Layouts</strong> — Breakpoints (<code class="bg-stone-100 px-1 rounded">sm</code>, <code class="bg-stone-100 px-1 rounded">md</code>, <code class="bg-stone-100 px-1 rounded">lg</code>) — same page works on phone and desktop.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                        <button class="accordion-button flex justify-between items-center w-full p-4 text-left font-semibold text-lg text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none">
+                            Phase 4: Tailwind CSS
+                        </button>
+                        <div class="accordion-content p-4">
+                            <p class="text-stone-600 mb-4">Tailwind is a utility-first CSS framework — the default in this program. Compose designs directly in your markup.</p>
+                            <ul class="space-y-3 text-stone-700 text-sm">
+                                <li><strong>Utility classes</strong> — Small single-purpose classes (<code class="bg-stone-100 px-1 rounded">flex</code>, <code class="bg-stone-100 px-1 rounded">text-lg</code>, <code class="bg-stone-100 px-1 rounded">bg-indigo-600</code>) composed in HTML/JSX.</li>
+                                <li><strong>Responsive Design</strong> — Prefix classes with breakpoints: <code class="bg-stone-100 px-1 rounded">md:flex</code>, <code class="bg-stone-100 px-1 rounded">lg:grid-cols-3</code>.</li>
+                                <li><strong>Dark Mode</strong> — <code class="bg-stone-100 px-1 rounded">dark:</code> variant for theme-aware styling. Pair with a class toggle on <code class="bg-stone-100 px-1 rounded">&lt;html&gt;</code>.</li>
+                                <li><strong>Custom Theme</strong> — Extend <code class="bg-stone-100 px-1 rounded">tailwind.config</code> with brand colors, fonts, and spacing — lock design in <code class="bg-stone-100 px-1 rounded">uiux.md</code>.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                        <button class="accordion-button flex justify-between items-center w-full p-4 text-left font-semibold text-lg text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none">
+                            Phase 5: JavaScript
+                        </button>
+                        <div class="accordion-content p-4">
+                            <p class="text-stone-600 mb-4">JavaScript makes pages interactive. This is the core language of the web — invest time here.</p>
+                            <ul class="space-y-3 text-stone-700 text-sm">
+                                <li><strong>Basics</strong> — Variables, types, operators, conditionals, loops, functions.</li>
+                                <li><strong>ES6+</strong> — <code class="bg-stone-100 px-1 rounded">let</code>/<code class="bg-stone-100 px-1 rounded">const</code>, arrow functions, destructuring, spread, modules (<code class="bg-stone-100 px-1 rounded">import</code>/<code class="bg-stone-100 px-1 rounded">export</code>).</li>
+                                <li><strong>DOM</strong> — Document Object Model — select elements, change content, add/remove nodes.</li>
+                                <li><strong>Events</strong> — Click, submit, input, keyboard. Event listeners and event delegation.</li>
+                                <li><strong>Closures</strong> — Functions that remember variables from their outer scope. Powers callbacks and hooks.</li>
+                                <li><strong>Hoisting</strong> — How JS moves declarations — understand to avoid <code class="bg-stone-100 px-1 rounded">undefined</code> surprises.</li>
+                                <li><strong>Event Loop</strong> — How async code runs: call stack, task queue, microtasks. Explains non-blocking behavior.</li>
+                                <li><strong>Async/Await</strong> — Clean syntax for asynchronous code — wait for API responses without blocking the UI.</li>
+                                <li><strong>Promises</strong> — Objects representing future values. <code class="bg-stone-100 px-1 rounded">.then()</code>, <code class="bg-stone-100 px-1 rounded">.catch()</code>, <code class="bg-stone-100 px-1 rounded">Promise.all()</code>.</li>
+                                <li><strong>Fetch API</strong> — Built-in way to call HTTP APIs from the browser. Returns a Promise.</li>
+                                <li><strong>Browser APIs</strong> — Geolocation, notifications, clipboard, Intersection Observer, and more.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                        <button class="accordion-button flex justify-between items-center w-full p-4 text-left font-semibold text-lg text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none">
+                            Phase 6: TypeScript
+                        </button>
+                        <div class="accordion-content p-4">
+                            <p class="text-stone-600 mb-4">TypeScript adds static types to JavaScript. Catch bugs early and improve editor autocomplete in large codebases.</p>
+                            <ul class="space-y-3 text-stone-700 text-sm">
+                                <li><strong>Types</strong> — Annotate variables, parameters, and return values: <code class="bg-stone-100 px-1 rounded">string</code>, <code class="bg-stone-100 px-1 rounded">number</code>, <code class="bg-stone-100 px-1 rounded">boolean</code>, unions, literals.</li>
+                                <li><strong>Interfaces</strong> — Define object shapes. Reuse across components and API responses.</li>
+                                <li><strong>Generics</strong> — Write reusable functions/components that work with multiple types: <code class="bg-stone-100 px-1 rounded">Array&lt;T&gt;</code>, <code class="bg-stone-100 px-1 rounded">useState&lt;T&gt;</code>.</li>
+                                <li><strong>Utility Types</strong> — Built-in helpers: <code class="bg-stone-100 px-1 rounded">Partial</code>, <code class="bg-stone-100 px-1 rounded">Pick</code>, <code class="bg-stone-100 px-1 rounded">Omit</code>, <code class="bg-stone-100 px-1 rounded">Record</code> — transform types without rewriting.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                        <button class="accordion-button flex justify-between items-center w-full p-4 text-left font-semibold text-lg text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none">
+                            Phase 7: Git &amp; GitHub
+                        </button>
+                        <div class="accordion-content p-4">
+                            <p class="text-stone-600 mb-4">Version control is non-negotiable for professional development. Every sprint in this program uses Git.</p>
+                            <ul class="space-y-3 text-stone-700 text-sm">
+                                <li><strong>Branching</strong> — Create feature branches (<code class="bg-stone-100 px-1 rounded">git checkout -b feature/auth</code>) to isolate work.</li>
+                                <li><strong>Merge</strong> — Combine branch changes into main. Use pull requests for review.</li>
+                                <li><strong>Rebase</strong> — Replay commits on top of another branch for a linear history. Use carefully on shared branches.</li>
+                                <li><strong>PRs</strong> — Pull Requests — propose changes, get review, run CI checks before merging.</li>
+                                <li><strong>Conflict Resolution</strong> — When two people edit the same lines, Git marks conflicts. Open the file, choose the right code, commit.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                        <button class="accordion-button flex justify-between items-center w-full p-4 text-left font-semibold text-lg text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none">
+                            Phase 8: React
+                        </button>
+                        <div class="accordion-content p-4">
+                            <p class="text-stone-600 mb-4">React is the dominant UI library for building component-based interfaces. Used throughout the main journey.</p>
+                            <ul class="space-y-3 text-stone-700 text-sm">
+                                <li><strong>Components</strong> — Reusable UI pieces. Function components return JSX.</li>
+                                <li><strong>Hooks</strong> — <code class="bg-stone-100 px-1 rounded">useState</code>, <code class="bg-stone-100 px-1 rounded">useEffect</code>, <code class="bg-stone-100 px-1 rounded">useRef</code>, custom hooks — state and side effects in functions.</li>
+                                <li><strong>Context</strong> — Share data (theme, auth) across the tree without prop drilling.</li>
+                                <li><strong>Redux Toolkit</strong> — Predictable global state for complex apps. Slices, reducers, actions.</li>
+                                <li><strong>Zustand</strong> — Lightweight alternative to Redux — minimal boilerplate, great for medium apps.</li>
+                                <li><strong>TanStack Query</strong> — Server state: fetching, caching, refetching API data. Replaces most manual <code class="bg-stone-100 px-1 rounded">useEffect</code> fetch logic.</li>
+                                <li><strong>Forms</strong> — Controlled inputs, validation libraries (React Hook Form, Formik).</li>
+                                <li><strong>Performance</strong> — <code class="bg-stone-100 px-1 rounded">memo</code>, <code class="bg-stone-100 px-1 rounded">useMemo</code>, <code class="bg-stone-100 px-1 rounded">useCallback</code> — avoid unnecessary re-renders.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                        <button class="accordion-button flex justify-between items-center w-full p-4 text-left font-semibold text-lg text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none">
+                            Phase 9: Next.js
+                        </button>
+                        <div class="accordion-content p-4">
+                            <p class="text-stone-600 mb-4">Next.js is the React framework for production — routing, SSR, API routes, and deployment built in. Default stack for intern projects.</p>
+                            <ul class="space-y-3 text-stone-700 text-sm">
+                                <li><strong>App Router</strong> — File-based routing in the <code class="bg-stone-100 px-1 rounded">app/</code> directory. Layouts, nested routes, loading UI.</li>
+                                <li><strong>SSR</strong> — Server-Side Rendering — HTML generated per request. Good for dynamic, personalized pages.</li>
+                                <li><strong>SSG</strong> — Static Site Generation — HTML built at deploy time. Fast for marketing pages and blogs.</li>
+                                <li><strong>ISR</strong> — Incremental Static Regeneration — static pages that refresh on a schedule.</li>
+                                <li><strong>Server/Client Components</strong> — Server Components run on the server (no JS shipped); Client Components (<code class="bg-stone-100 px-1 rounded">'use client'</code>) handle interactivity.</li>
+                                <li><strong>Middleware</strong> — Run code before a request completes — auth checks, redirects, geo routing.</li>
+                                <li><strong>API Routes</strong> — Backend endpoints in the same repo. Keep secrets server-side.</li>
+                                <li><strong>SEO</strong> — Metadata API, Open Graph, sitemaps — built-in helpers for search and social sharing.</li>
+                                <li><strong>Auth</strong> — NextAuth.js, Clerk, or custom JWT flows integrated with App Router.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                        <button class="accordion-button flex justify-between items-center w-full p-4 text-left font-semibold text-lg text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none">
+                            Phase 10: APIs
+                        </button>
+                        <div class="accordion-content p-4">
+                            <p class="text-stone-600 mb-4">Frontends rarely stand alone — they consume APIs. Learn patterns for reliable data fetching.</p>
+                            <ul class="space-y-3 text-stone-700 text-sm">
+                                <li><strong>Axios</strong> — Popular HTTP client with interceptors, defaults, and better error handling than raw fetch.</li>
+                                <li><strong>Fetch</strong> — Native browser API — no extra dependency. Works well with async/await.</li>
+                                <li><strong>Pagination</strong> — Load data in pages (offset/limit or cursor-based) instead of fetching everything at once.</li>
+                                <li><strong>Debouncing</strong> — Delay API calls until the user stops typing — essential for search inputs.</li>
+                                <li><strong>Caching</strong> — Store responses to avoid redundant requests. TanStack Query and SWR handle this automatically.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                        <button class="accordion-button flex justify-between items-center w-full p-4 text-left font-semibold text-lg text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none">
+                            Phase 11: Authentication
+                        </button>
+                        <div class="accordion-content p-4">
+                            <p class="text-stone-600 mb-4">Most real apps need users to sign in. Understand tokens, OAuth, and access control.</p>
+                            <ul class="space-y-3 text-stone-700 text-sm">
+                                <li><strong>JWT</strong> — JSON Web Token — signed token the client sends with requests to prove identity.</li>
+                                <li><strong>OAuth</strong> — "Sign in with Google/GitHub" — delegate auth to a trusted provider.</li>
+                                <li><strong>Protected Routes</strong> — Pages that redirect unauthenticated users to login. Middleware or layout guards.</li>
+                                <li><strong>RBAC</strong> — Role-Based Access Control — admin vs user vs guest see different features.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                        <button class="accordion-button flex justify-between items-center w-full p-4 text-left font-semibold text-lg text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none">
+                            Phase 12: Performance
+                        </button>
+                        <div class="accordion-content p-4">
+                            <p class="text-stone-600 mb-4">Fast apps keep users happy and rank better. Optimize after it works — measure first.</p>
+                            <ul class="space-y-3 text-stone-700 text-sm">
+                                <li><strong>Lazy Loading</strong> — Load components and images only when needed (<code class="bg-stone-100 px-1 rounded">dynamic import</code>, <code class="bg-stone-100 px-1 rounded">loading="lazy"</code>).</li>
+                                <li><strong>Code Splitting</strong> — Split bundles so users download only what the current page needs.</li>
+                                <li><strong>Memoization</strong> — Cache expensive computations and component renders when inputs haven't changed.</li>
+                                <li><strong>Web Vitals</strong> — Core metrics: LCP (load), INP (interactivity), CLS (layout shift). Target green scores in Lighthouse.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                        <button class="accordion-button flex justify-between items-center w-full p-4 text-left font-semibold text-lg text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none">
+                            Phase 13: Testing
+                        </button>
+                        <div class="accordion-content p-4">
+                            <p class="text-stone-600 mb-4">Tests give confidence to refactor and ship. Start with unit tests, add E2E for critical flows.</p>
+                            <ul class="space-y-3 text-stone-700 text-sm">
+                                <li><strong>Jest</strong> — Test runner for unit tests. Assertions, mocks, snapshots.</li>
+                                <li><strong>React Testing Library</strong> — Test components the way users interact — click, type, assert visible text.</li>
+                                <li><strong>Playwright</strong> — End-to-end tests in a real browser — login flows, checkout, full user journeys.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                        <button class="accordion-button flex justify-between items-center w-full p-4 text-left font-semibold text-lg text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none">
+                            Phase 14: Deployment
+                        </button>
+                        <div class="accordion-content p-4">
+                            <p class="text-stone-600 mb-4">Shipping to production is the goal. Automate deploys and manage secrets safely.</p>
+                            <ul class="space-y-3 text-stone-700 text-sm">
+                                <li><strong>Vercel</strong> — Best fit for Next.js — git push to deploy, preview URLs per PR.</li>
+                                <li><strong>Netlify</strong> — Great for static sites and JAMstack apps with serverless functions.</li>
+                                <li><strong>CI/CD</strong> — GitHub Actions runs tests and deploys on every push — catch bugs before users do.</li>
+                                <li><strong>Environment Variables</strong> — API keys and secrets in platform settings — never in source code. Use <code class="bg-stone-100 px-1 rounded">.env.local</code> locally.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                        <button class="accordion-button flex justify-between items-center w-full p-4 text-left font-semibold text-lg text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none">
+                            Phase 15: Frontend System Design
+                        </button>
+                        <div class="accordion-content p-4">
+                            <p class="text-stone-600 mb-4">Senior-level skills — how to structure large frontends that teams can maintain and scale.</p>
+                            <ul class="space-y-3 text-stone-700 text-sm">
+                                <li><strong>Architecture</strong> — Folder structure, feature modules, separation of concerns (UI vs data vs utils).</li>
+                                <li><strong>SOLID</strong> — Design principles: single responsibility, open/closed, etc. — applied to components and modules.</li>
+                                <li><strong>Clean Code</strong> — Readable names, small functions, consistent patterns — code others (and future you) can understand.</li>
+                                <li><strong>Monitoring</strong> — Error tracking (Sentry), analytics, performance monitoring in production.</li>
+                                <li><strong>Micro Frontends</strong> — Split large apps into independently deployable frontend pieces — advanced pattern for big teams.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-2xl font-semibold text-indigo-700 mb-2">Portfolio Projects</h3>
+                    <p class="text-stone-600 mb-6">Build these projects as you progress through the phases. Each one practices real skills employers look for.</p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        <div class="bg-indigo-50 p-4 rounded-lg border border-indigo-100">
+                            <h4 class="font-semibold text-indigo-800">Portfolio</h4>
+                            <p class="text-sm text-indigo-600 mt-1">Personal site showcasing your work. Practices HTML, CSS, Tailwind, responsive design.</p>
+                            <p class="text-xs text-stone-500 mt-2">Phases 1–2, 4</p>
+                        </div>
+                        <div class="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                            <h4 class="font-semibold text-blue-800">Landing Page</h4>
+                            <p class="text-sm text-blue-600 mt-1">Marketing page with hero, features, CTA. Practices layout, animations, mobile-first design.</p>
+                            <p class="text-xs text-stone-500 mt-2">Phases 2, 4</p>
+                        </div>
+                        <div class="bg-purple-50 p-4 rounded-lg border border-purple-100">
+                            <h4 class="font-semibold text-purple-800">Todo</h4>
+                            <p class="text-sm text-purple-600 mt-1">Add, complete, delete tasks with local storage. Classic CRUD intro.</p>
+                            <p class="text-xs text-stone-500 mt-2">Phases 5, 8</p>
+                        </div>
+                        <div class="bg-cyan-50 p-4 rounded-lg border border-cyan-100">
+                            <h4 class="font-semibold text-cyan-900">Weather App</h4>
+                            <p class="text-sm text-cyan-700 mt-1">Fetch live weather from a public API. Practices async, fetch, error states.</p>
+                            <p class="text-xs text-stone-500 mt-2">Phases 5, 10</p>
+                        </div>
+                        <div class="bg-amber-50 p-4 rounded-lg border border-amber-100">
+                            <h4 class="font-semibold text-amber-900">Movie App</h4>
+                            <p class="text-sm text-amber-700 mt-1">Search movies, browse results with pagination. Practices APIs, debouncing, caching.</p>
+                            <p class="text-xs text-stone-500 mt-2">Phases 8, 10</p>
+                        </div>
+                        <div class="bg-green-50 p-4 rounded-lg border border-green-100">
+                            <h4 class="font-semibold text-green-800">Expense Tracker</h4>
+                            <p class="text-sm text-green-600 mt-1">Log income and expenses with categories. Practices forms, state, TypeScript types.</p>
+                            <p class="text-xs text-stone-500 mt-2">Phases 6, 8</p>
+                        </div>
+                        <div class="bg-rose-50 p-4 rounded-lg border border-rose-100">
+                            <h4 class="font-semibold text-rose-800">Auth System</h4>
+                            <p class="text-sm text-rose-600 mt-1">Sign up, login, protected dashboard. Practices JWT, OAuth, route guards.</p>
+                            <p class="text-xs text-stone-500 mt-2">Phases 9, 11</p>
+                        </div>
+                        <div class="bg-violet-50 p-4 rounded-lg border border-violet-100">
+                            <h4 class="font-semibold text-violet-800">Blog</h4>
+                            <p class="text-sm text-violet-600 mt-1">Markdown posts with SSR/SSG. Practices Next.js routing, SEO, metadata.</p>
+                            <p class="text-xs text-stone-500 mt-2">Phases 9, 14</p>
+                        </div>
+                        <div class="bg-teal-50 p-4 rounded-lg border border-teal-100">
+                            <h4 class="font-semibold text-teal-800">Dashboard</h4>
+                            <p class="text-sm text-teal-600 mt-1">Charts, tables, filters from live data. Practices TanStack Query, performance, system design.</p>
+                            <p class="text-xs text-stone-500 mt-2">Phases 8, 10, 12, 15</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-indigo-50 border border-indigo-200 p-5 rounded-lg">
+                    <h4 class="font-bold text-indigo-900 mb-2">Connect to Prompt2Production</h4>
+                    <p class="text-sm text-indigo-800 mb-3">This roadmap is your self-study companion. The program gives you the hands-on path:</p>
+                    <ul class="text-sm text-indigo-800 space-y-1">
+                        <li><a href="#one-page-app" class="text-indigo-600 hover:underline font-medium">Chapter 4 — One-Page App</a> — your first build with web LLMs</li>
+                        <li><a href="#cursor-ides" class="text-indigo-600 hover:underline font-medium">Chapter 6 — Cursor &amp; Antigravity</a> — AI-native IDE workflows</li>
+                        <li><a href="#main-journey" class="text-indigo-600 hover:underline font-medium">Chapter 7 — The Main Journey</a> — full stack capstone and deploy</li>
+                    </ul>
+                </div>
+            </section>

@@ -59,7 +59,8 @@ prompt2production-session-1-UJT/
 │   ├── 07-main-journey.html
 │   ├── 08-responsible-ai.html
 │   ├── 09-cheat-sheet.html
-│   └── 10-glossary.html
+│   ├── 10-glossary.html
+│   └── 11-frontend-roadmap.html
 ├── assets/
 │   ├── css/styles.css
 │   └── js/app.js           # Fetch chapters, hash routing, interactions
@@ -94,6 +95,7 @@ prompt2production-session-1-UJT/
 | 6 | `06-cursor-antigravity.html` | AI-native IDEs |
 | 7 | `07-main-journey.html` | Full stack capstone, Git, deploy |
 | 8–10 | `08`–`10` | Responsible AI, cheat sheet, glossary |
+| 11 | `11-frontend-roadmap.html` | Complete frontend roadmap (beginner to pro) |
 
 ---
 

@@ -16,6 +16,7 @@ const CHAPTERS = {
     'responsible-ai': '08-responsible-ai',
     'cheat-sheet': '09-cheat-sheet',
     glossary: '10-glossary',
+    'frontend-roadmap': '11-frontend-roadmap',
 };
 
 const CHAPTER_LABELS = {
@@ -36,6 +37,7 @@ const CHAPTER_LABELS = {
     'responsible-ai': '8. Responsible AI',
     'cheat-sheet': '9. Prompt Cheat Sheet',
     glossary: '10. Glossary',
+    'frontend-roadmap': '11. Frontend Roadmap',
 };
 
 const TARGET_TO_CHAPTER = Object.fromEntries(

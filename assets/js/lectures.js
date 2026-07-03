@@ -614,6 +614,18 @@ const LECTURES = {
                     { label: 'Gemini API Docs', url: 'https://ai.google.dev/gemini-api/docs' },
                 ],
             },
+            {
+                title: 'Complete Frontend Roadmap',
+                bullets: [
+                    'Prompt2Production teaches AI-native development — not every frontend topic in depth',
+                    'The ebook has a full Beginner → Pro roadmap: HTML, CSS, JS, React, Next.js, testing, and more',
+                    'Use it as a self-study guide alongside your sprints and portfolio builds',
+                    'Switch to Ebook mode → Chapter 11: Frontend Roadmap',
+                ],
+                links: [
+                    { label: 'Frontend Roadmap (Ebook)', url: '#frontend-roadmap' },
+                ],
+            },
         ],
     },
     'lecture-5': {
