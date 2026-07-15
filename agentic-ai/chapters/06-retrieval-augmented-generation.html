@@ -1,0 +1,608 @@
+<section id="m6" class="chapter space-y-8">
+    <header>
+        <p class="text-sm font-semibold uppercase tracking-wide text-indigo-600 mb-2">Part II — Knowledge &amp; Retrieval · Module 6 · 3 days</p>
+        <h2 class="text-4xl font-bold text-stone-900">M6: Retrieval-Augmented Generation (RAG)</h2>
+        <p class="text-lg text-stone-600 mt-2">
+            Retrieval without generation is search. Generation without retrieval is guesswork. <strong>RAG</strong> stitches them:
+            retrieve <strong>AlrightTech Internal Docs</strong>, place evidence in the prompt, and require the model to answer
+            <em>from that evidence</em> with citations. Your job is grounded answers, honest refusal when evidence is missing,
+            and numbers (RAGAS or equivalent) that catch regressions before users do.
+        </p>
+        <div class="mt-4 bg-indigo-50 border border-indigo-100 rounded-lg p-4">
+            <p class="text-sm font-semibold text-indigo-900 mb-2">Learning objectives</p>
+            <ul class="list-disc pl-5 text-sm text-indigo-800 space-y-1">
+                <li>Build an end-to-end RAG pipeline from ingestion to a grounded, cited answer</li>
+                <li>Reduce hallucination through grounding, source attribution, and honest “I don’t know” behavior</li>
+                <li>Evaluate RAG quality with the right metrics instead of eyeballing</li>
+                <li>Identify and fix the common failure points of naive RAG</li>
+            </ul>
+        </div>
+    </header>
+
+    <!-- Day 1 -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <p class="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-2">Day 1 — Architecture &amp; ingestion</p>
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">6.1 End-to-End RAG Architecture</h3>
+        <p class="text-stone-700 mb-4">
+            A production RAG system is a pipeline of owned stages — not a black-box “chat with PDF.” Each stage has artifacts you can version, test, and debug.
+            This module wires your M4 chunker/embedder and M5 <code class="bg-stone-100 px-1 rounded">VectorStore</code> into a complete answer path.
+        </p>
+        <div class="flex flex-wrap items-center justify-center gap-2 text-center text-sm mb-4">
+            <div class="bg-indigo-50 px-3 py-2 rounded-lg border border-indigo-100 font-medium text-indigo-900">Ingest / Parse</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-purple-50 px-3 py-2 rounded-lg border border-purple-100 font-medium text-purple-900">Chunk + Metadata</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-amber-50 px-3 py-2 rounded-lg border border-amber-100 font-medium text-amber-900">Embed</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-100 font-medium text-emerald-900">VectorStore (M5)</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-indigo-50 px-3 py-2 rounded-lg border border-indigo-100 font-medium text-indigo-900">Retrieve top-k</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-purple-50 px-3 py-2 rounded-lg border border-purple-100 font-medium text-purple-900">Pack context</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-amber-50 px-3 py-2 rounded-lg border border-amber-100 font-medium text-amber-900">LLM generate</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-100 font-medium text-emerald-900">Answer + citations</div>
+        </div>
+        <div class="overflow-x-auto mb-4">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Stage</th>
+                        <th class="border border-stone-200 p-2">Responsibility</th>
+                        <th class="border border-stone-200 p-2">Owned artifacts</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Ingest</td>
+                        <td class="border border-stone-200 p-2">Parse bytes → clean text + provenance</td>
+                        <td class="border border-stone-200 p-2">Loaders, checksums</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Chunk</td>
+                        <td class="border border-stone-200 p-2">Split + metadata + stable ids</td>
+                        <td class="border border-stone-200 p-2">Chunker config from M4</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Embed</td>
+                        <td class="border border-stone-200 p-2">Vectors with pinned model</td>
+                        <td class="border border-stone-200 p-2">Embedder from M4</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Store</td>
+                        <td class="border border-stone-200 p-2">Persist + ANN query</td>
+                        <td class="border border-stone-200 p-2"><code class="bg-stone-100 px-1 rounded text-xs">VectorStore</code> from M5</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Retrieve</td>
+                        <td class="border border-stone-200 p-2">Top-k (+ filters)</td>
+                        <td class="border border-stone-200 p-2"><code class="bg-stone-100 px-1 rounded text-xs">k</code>, filters, score floor</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Augment</td>
+                        <td class="border border-stone-200 p-2">Pack context under token budget</td>
+                        <td class="border border-stone-200 p-2">Prompt template version</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Generate</td>
+                        <td class="border border-stone-200 p-2">Grounded answer + citations</td>
+                        <td class="border border-stone-200 p-2">System/user contract</td>
+                    </tr>
+                    <tr class="bg-indigo-50">
+                        <td class="border border-stone-200 p-2 font-medium">Evaluate</td>
+                        <td class="border border-stone-200 p-2">Faithfulness &amp; retrieval metrics</td>
+                        <td class="border border-stone-200 p-2">Golden set + RAGAS</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-900">
+            <strong>Business failure mode:</strong> a chatbot tells a new hire the wrong SSO steps because it mixed last year’s Confluence page with a blog post from training data.
+            Your job is not “make it chatty.” Your job is <em>grounded answers</em> with honest refusal when evidence is missing.
+        </div>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">6.2 Document Loaders &amp; Parsing Pain</h3>
+        <p class="text-stone-700 mb-4">Real corpora are hostile. The parser is often the bug — not the LLM.</p>
+        <div class="overflow-x-auto mb-4">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Format</th>
+                        <th class="border border-stone-200 p-2">Common failure</th>
+                        <th class="border border-stone-200 p-2">Mitigation</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">PDF</td>
+                        <td class="border border-stone-200 p-2">Column scramble, headers as noise</td>
+                        <td class="border border-stone-200 p-2">Layout-aware parsers; strip repeating headers</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">HTML</td>
+                        <td class="border border-stone-200 p-2">Nav, ads, cookie banners</td>
+                        <td class="border border-stone-200 p-2">Boilerplate removal; main-content extract</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">DOCX</td>
+                        <td class="border border-stone-200 p-2">Fairly clean; styles lost</td>
+                        <td class="border border-stone-200 p-2">Map headings → <code class="bg-stone-100 px-1 rounded text-xs">section</code> metadata</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Tables</td>
+                        <td class="border border-stone-200 p-2">Flattened wrong → nonsense chunks</td>
+                        <td class="border border-stone-200 p-2">Keep table as structured text or separate table index (M7)</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <p class="text-stone-700 mb-3"><strong>Idempotent ingest.</strong> Key by content hash + path. Unchanged files skip re-embed. Changed files upsert by <code class="bg-stone-100 px-1 rounded">chunk_id</code> strategy (delete old chunks for that <code class="bg-stone-100 px-1 rounded">source</code>, then insert).</p>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm"><code>import hashlib
+from pathlib import Path
+
+def file_fingerprint(path: Path) -&gt; str:
+    data = path.read_bytes()
+    return hashlib.sha256(data).hexdigest()</code></pre>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">6.3 Minimal Pipeline Wiring (Framework-Light)</h3>
+        <p class="text-stone-700 mb-4">
+            Prefer this clarity on Day 1. LangChain loaders are fine accelerators <em>after</em> you can narrate every stage without a stack trace.
+        </p>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm"><code>def ingest_path(path: Path, store: VectorStore, embed_fn, chunk_fn, collection: str) -&gt; int:
+    text = path.read_text(encoding="utf-8")  # replace with PDF/HTML loaders as needed
+    chunks = chunk_fn(text, source=str(path))
+    vectors = embed_fn([c.text for c in chunks])
+    records = [
+        VectorRecord(chunk_id=c.chunk_id, text=c.text, embedding=v, metadata=c.metadata)
+        for c, v in zip(chunks, vectors)
+    ]
+    store.upsert(collection, records)
+    return len(records)</code></pre>
+        <p class="text-sm text-stone-500 mt-2">Course opinion: <strong>implement RAG once by hand</strong>; optionally re-express with LangChain afterward to see what the framework buys you.</p>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">6.4 Prompt Assembly: Context, Citations, Refusals</h3>
+        <p class="text-stone-700 mb-4">Treat retrieved chunks as <strong>evidence</strong>, not decoration.</p>
+        <h4 class="font-semibold text-stone-800 mb-2">System contract (example)</h4>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm mb-4"><code>You are the AlrightTech Docs Assistant. Answer ONLY using the EVIDENCE blocks.
+If EVIDENCE is insufficient, say you don't know and suggest which doc type might help.
+Cite sources using [chunk_id] inline. Do not invent policies or URLs.</code></pre>
+        <h4 class="font-semibold text-stone-800 mb-2">User message shape</h4>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm mb-4"><code>QUESTION:
+{question}
+
+EVIDENCE:
+[runbooks/revert-failed-deploy.md#c003] (source: ..., updated: 2026-03-12)
+{chunk_text_1}
+
+[onboarding/sso.md#c012] ...
+{chunk_text_2}</code></pre>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+            <div class="bg-emerald-50 border border-emerald-200 p-4 rounded-lg">
+                <p class="font-semibold text-emerald-900">Use strict grounding when</p>
+                <ul class="list-disc pl-5 text-emerald-800 mt-2 space-y-1">
+                    <li>Policies, security, medical/legal-adjacent</li>
+                    <li>Internal SOPs and runbooks</li>
+                </ul>
+            </div>
+            <div class="bg-stone-50 border border-stone-200 p-4 rounded-lg">
+                <p class="font-semibold text-stone-800">Skip RAG when</p>
+                <ul class="list-disc pl-5 text-stone-700 mt-2 space-y-1">
+                    <li>Brainstorming / creative tasks</li>
+                    <li>Wrong product shape — don’t force retrieval onto everything</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">6.5 Top-k &amp; Context Compression</h3>
+        <p class="text-stone-700 mb-4">Context windows are finite and expensive (Part I lesson). Strategy ladder:</p>
+        <ol class="list-decimal pl-5 text-stone-700 space-y-2 mb-4 text-sm">
+            <li>Choose smaller <code class="bg-stone-100 px-1 rounded">k</code> of higher-quality chunks (fix improves in M7).</li>
+            <li>Drop chunks below a similarity floor.</li>
+            <li>Summarize or “compress” long chunks with a cheap model <em>only if</em> you measure faithfulness later.</li>
+            <li>Prefer parent-document patterns (M7) over stuffing the whole file.</li>
+        </ol>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm"><code>def pack_context(hits: list[SearchHit], max_chars: int = 12_000) -&gt; str:
+    parts: list[str] = []
+    used = 0
+    for h in hits:
+        block = f"[{h.chunk_id}] (source: {h.metadata.get('source')})\n{h.text}\n"
+        if used + len(block) &gt; max_chars:
+            break
+        parts.append(block)
+        used += len(block)
+    return "\n".join(parts)</code></pre>
+    </div>
+
+    <!-- Day 2 -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <p class="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-2">Day 2 — Failure modes &amp; cited chatbot</p>
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">6.6 RAG Failure Modes (Debug Playbook)</h3>
+        <p class="text-stone-700 mb-4"><strong>Debug order (always):</strong> retrieval first, then packing, then generation. Never rewrite the system prompt until you print the retrieved chunks.</p>
+        <div class="overflow-x-auto mb-4">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Failure</th>
+                        <th class="border border-stone-200 p-2">Symptom</th>
+                        <th class="border border-stone-200 p-2">Where to look</th>
+                        <th class="border border-stone-200 p-2">First fix</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Poor retrieval</td>
+                        <td class="border border-stone-200 p-2">Wrong docs; answer invents</td>
+                        <td class="border border-stone-200 p-2">Hit rate@k on gold</td>
+                        <td class="border border-stone-200 p-2">Chunking, embedding, hybrid, filters</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Lost-in-the-middle</td>
+                        <td class="border border-stone-200 p-2">Model ignores mid-context</td>
+                        <td class="border border-stone-200 p-2">Trace that gold chunk was retrieved</td>
+                        <td class="border border-stone-200 p-2">Put critical evidence first/last; reduce <code class="bg-stone-100 px-1 rounded text-xs">k</code>; rerank</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Stale data</td>
+                        <td class="border border-stone-200 p-2">Correct old policy</td>
+                        <td class="border border-stone-200 p-2"><code class="bg-stone-100 px-1 rounded text-xs">updated_at</code> on cited chunks</td>
+                        <td class="border border-stone-200 p-2">Re-ingest; filter by freshness; show dates in UI</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Conflicting sources</td>
+                        <td class="border border-stone-200 p-2">Two FAQs disagree</td>
+                        <td class="border border-stone-200 p-2">Both chunks retrieved</td>
+                        <td class="border border-stone-200 p-2">Prefer newest; surface conflict explicitly in prompt</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Hallucinated citation</td>
+                        <td class="border border-stone-200 p-2"><code class="bg-stone-100 px-1 rounded text-xs">[chunk_id]</code> that wasn’t provided</td>
+                        <td class="border border-stone-200 p-2">Output validator</td>
+                        <td class="border border-stone-200 p-2">Constrain cites to allowed ids; structured output</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Over-refusal</td>
+                        <td class="border border-stone-200 p-2">Says “don’t know” with good evidence</td>
+                        <td class="border border-stone-200 p-2">Prompt too harsh / <code class="bg-stone-100 px-1 rounded text-xs">k</code> too low</td>
+                        <td class="border border-stone-200 p-2">Lower score floor carefully; add few-shot grounded examples</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">6.7 Deliberately Break RAG (Lab Mindset)</h3>
+        <p class="text-stone-700 mb-4">To build diagnostic skill, break the pipeline on purpose:</p>
+        <ol class="list-decimal pl-5 text-stone-700 space-y-2 mb-4 text-sm">
+            <li>Set chunk size to 80 tokens → retrieval fragments incoherently.</li>
+            <li>Set <code class="bg-stone-100 px-1 rounded">k=1</code> on multi-hop questions → incomplete answers.</li>
+            <li>Shuffle evidence order randomly → observe lost-in-the-middle.</li>
+            <li>Point retrieval at an empty collection → must refuse, not improvise.</li>
+        </ol>
+        <p class="text-stone-700 mb-2">Log a <strong>trace</strong> for every answer:</p>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm"><code>{
+  "question": "...",
+  "retrieved": [{"chunk_id": "...", "score": 0.82}],
+  "prompt_version": "docs-rag-v3",
+  "answer": "...",
+  "citations": ["..."]
+}</code></pre>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">6.8 Cited Answer + Out-of-Scope Guard</h3>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm mb-4"><code>ALLOWED = set()  # fill from packed hits' chunk_ids
+
+def validate_citations(answer: str, allowed: set[str]) -&gt; bool:
+    import re
+    cites = set(re.findall(r"\[([^\]]+)\]", answer))
+    return cites.issubset(allowed) if cites else False  # or require ≥1 cite when answering</code></pre>
+        <p class="text-stone-700 mb-3"><strong>Out-of-scope pattern:</strong></p>
+        <ol class="list-decimal pl-5 text-stone-700 space-y-1 mb-4 text-sm">
+            <li>Retrieve top-k.</li>
+            <li>If max score &lt; threshold <strong>or</strong> empty after filters → short circuit with refusal (no LLM or LLM with empty evidence).</li>
+            <li>Else generate under grounding contract.</li>
+        </ol>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+            <div class="bg-emerald-50 border border-emerald-200 p-4 rounded-lg">
+                <p class="font-semibold text-emerald-900">Use score threshold when</p>
+                <p class="text-emerald-800 mt-1">Scores are calibrated (same model, normalized).</p>
+            </div>
+            <div class="bg-stone-50 border border-stone-200 p-4 rounded-lg">
+                <p class="font-semibold text-stone-800">Skip score threshold when</p>
+                <p class="text-stone-700 mt-1">Scores drift across models — prefer a small classifier / LLM judge for “supported?”</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">6.9 Frameworks: LangChain — and When to Skip It</h3>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Use LangChain (or similar) when</th>
+                        <th class="border border-stone-200 p-2">Stay framework-light when</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2">You need many loaders quickly and understand the pipeline already</td>
+                        <td class="border border-stone-200 p-2">You are learning or debugging stage failures</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2">Team standardizes on LC for glue</td>
+                        <td class="border border-stone-200 p-2">Vendor abstractions hide prompt/retrieval bugs</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2">Prototyping routing/chains you’ll rewrite</td>
+                        <td class="border border-stone-200 p-2">Production needs a 200-line explicit pipeline</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Day 3 -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <p class="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-2">Day 3 — Evaluation with RAGAS</p>
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">6.10 Why Eyeballing Fails</h3>
+        <p class="text-stone-700 mb-4">
+            Demo questions become tribal knowledge. A refactor that drops hit rate@5 from 0.78 to 0.55 still “looks fine” on the three questions leadership typed in the hallway.
+            Evaluation is how AI engineers protect users.
+        </p>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">6.11 Core RAG Metrics</h3>
+        <div class="overflow-x-auto mb-4">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Metric</th>
+                        <th class="border border-stone-200 p-2">Asks</th>
+                        <th class="border border-stone-200 p-2">Low score means</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Context precision</td>
+                        <td class="border border-stone-200 p-2">Are retrieved chunks mostly relevant?</td>
+                        <td class="border border-stone-200 p-2">Noisy retrieval</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Context recall</td>
+                        <td class="border border-stone-200 p-2">Did we retrieve enough gold evidence?</td>
+                        <td class="border border-stone-200 p-2">Missing chunks / bad chunking</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Faithfulness</td>
+                        <td class="border border-stone-200 p-2">Is the answer supported by context?</td>
+                        <td class="border border-stone-200 p-2">Hallucination / weak grounding</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Answer relevance</td>
+                        <td class="border border-stone-200 p-2">Does the answer address the question?</td>
+                        <td class="border border-stone-200 p-2">Drift / refusal errors / verbosity</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <p class="text-sm text-stone-600">
+            <strong>RAGAS</strong> implements LLM-assisted and heuristic variants of these. Pin judge model versions; treat scores as <em>relative</em> (before/after) more than absolute gospel.
+        </p>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">6.12 Golden Set Shape &amp; RAGAS Wiring</h3>
+        <p class="text-stone-700 mb-3">Start from M4/M5 gold queries; add <code class="bg-stone-100 px-1 rounded">ground_truth</code> answers. Freeze a <strong>v1</strong> set before the mini project polish — Module 7 must compare against the same freeze.</p>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm mb-4"><code>{
+  "id": "q042",
+  "question": "How do we rollback a failed Railway deploy?",
+  "ground_truth": "Follow the revert-failed-deploy runbook: ...",
+  "ground_truth_chunk_ids": ["runbooks/revert-failed-deploy.md#c003"]
+}</code></pre>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm mb-4"><code># Pseudocode — follow current RAGAS API in docs; APIs evolve
+from datasets import Dataset
+
+def build_eval_rows(questions, answers, contexts, ground_truths):
+    return Dataset.from_dict({
+        "question": questions,
+        "answer": answers,
+        "contexts": contexts,          # list[list[str]]
+        "ground_truth": ground_truths,
+    })
+
+# result = evaluate(dataset, metrics=[faithfulness, answer_relevancy,
+#                                     context_precision, context_recall])</code></pre>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm"><code># RAGAS Report — Chat With Docs v1
+faithfulness: 0.81
+answer_relevance: 0.86
+context_precision: 0.74
+context_recall: 0.69
+n: 40
+prompt: docs-rag-v3
+embed: text-embedding-3-small
+retriever: dense top_k=5</code></pre>
+        <p class="text-sm text-stone-500 mt-2">Commit baseline to <code class="bg-stone-100 px-1 rounded">evals/reports/m6-baseline.md</code> — this is the input artifact for M7 before/after comparison.</p>
+    </div>
+
+    <!-- Decision guide -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">Engineering Decision Guide</h3>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Decision</th>
+                        <th class="border border-stone-200 p-2">Guidance</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium"><code class="bg-stone-100 px-1 rounded text-xs">k</code></td>
+                        <td class="border border-stone-200 p-2">Start 4–8; raise only if context recall is low <em>and</em> faithfulness stays high</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Citations</td>
+                        <td class="border border-stone-200 p-2">Inline <code class="bg-stone-100 px-1 rounded text-xs">[chunk_id]</code> + UI snippet from metadata</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Refusal</td>
+                        <td class="border border-stone-200 p-2">Prefer false “don’t know” over false policy</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Eval cadence</td>
+                        <td class="border border-stone-200 p-2">Run golden set on every prompt/retriever change</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Framework</td>
+                        <td class="border border-stone-200 p-2">Hand-built core; optional LC for loaders</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Ops failure modes -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">Failure Modes &amp; Diagnostics (Ops View)</h3>
+        <ol class="list-decimal pl-5 text-stone-700 space-y-2 text-sm">
+            <li><strong>Faithfulness drops after a model upgrade</strong> — new model more creative; tighten prompt; lower temperature; validate citations.</li>
+            <li><strong>Context recall low, faithfulness high</strong> — answers are narrow but lucky; fix retrieval before celebrating.</li>
+            <li><strong>Users complain “robotic”</strong> — usually over-citation or refusal; product tone ≠ remove grounding.</li>
+            <li><strong>PDF ingest looks fine, answers meaningless</strong> — print raw extracted text; parser is the bug.</li>
+        </ol>
+    </div>
+
+    <!-- Labs -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">Hands-on Labs</h3>
+        <div class="space-y-4">
+            <div class="border border-stone-200 rounded-lg p-4">
+                <h4 class="font-semibold text-stone-800">Lab 6.1 — Full RAG chatbot over a real document set</h4>
+                <ol class="list-decimal pl-5 text-sm text-stone-700 mt-2 space-y-1">
+                    <li>Ingest AlrightTech Internal Docs (PDFs and/or Markdown) via M5 store.</li>
+                    <li>Build chat loop: retrieve → pack → generate with citations.</li>
+                    <li>Show sources in the response (ids + source path).</li>
+                </ol>
+                <p class="text-xs text-emerald-700 mt-2"><strong>Done when:</strong> ≥10 successful grounded answers on held-out questions; trace JSON saved per response.</p>
+            </div>
+            <div class="border border-stone-200 rounded-lg p-4">
+                <h4 class="font-semibold text-stone-800">Lab 6.2 — Out-of-corpus “I don’t know”</h4>
+                <ol class="list-decimal pl-5 text-sm text-stone-700 mt-2 space-y-1">
+                    <li>Ask questions outside the corpus (sports scores, other companies’ policies).</li>
+                    <li>Add threshold or empty-evidence short circuit.</li>
+                    <li>Confirm no fabricated AlrightTech policy.</li>
+                </ol>
+                <p class="text-xs text-emerald-700 mt-2"><strong>Done when:</strong> documented refusal behavior with examples; no invented <code class="bg-stone-100 px-1 rounded">chunk_id</code>s in refusals.</p>
+            </div>
+            <div class="border border-stone-200 rounded-lg p-4">
+                <h4 class="font-semibold text-stone-800">Lab 6.3 — Break and diagnose</h4>
+                <ol class="list-decimal pl-5 text-sm text-stone-700 mt-2 space-y-1">
+                    <li>Apply two deliberate breaks (chunking and <code class="bg-stone-100 px-1 rounded">k</code> or order).</li>
+                    <li>Use traces to identify the failing stage.</li>
+                    <li>Restore baseline; write a one-page incident note.</li>
+                </ol>
+                <p class="text-xs text-emerald-700 mt-2"><strong>Done when:</strong> incident note names the stage and the metric that moved; fix verified on the same questions.</p>
+            </div>
+            <div class="border border-stone-200 rounded-lg p-4">
+                <h4 class="font-semibold text-stone-800">Lab 6.4 — RAGAS scorecard</h4>
+                <ol class="list-decimal pl-5 text-sm text-stone-700 mt-2 space-y-1">
+                    <li>Freeze ≥30 golden items.</li>
+                    <li>Run faithfulness, answer relevance, context precision/recall.</li>
+                    <li>Commit the report into the repo (<code class="bg-stone-100 px-1 rounded">evals/reports/m6-baseline.md</code>).</li>
+                </ol>
+                <p class="text-xs text-emerald-700 mt-2"><strong>Done when:</strong> report includes metric values, <code class="bg-stone-100 px-1 rounded">n</code>, model, prompt version, retriever config; you can explain each metric in one sentence.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mini project -->
+    <div class="bg-white p-6 rounded-lg shadow-md border-2 border-indigo-200">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-2">Mini Project — “Chat With Your Docs” RAG App</h3>
+        <p class="text-stone-700 mb-4">
+            A deployed (or locally demoable) RAG application that answers questions over an uploaded / configured corpus,
+            shows inline citations tied to real chunks, guards out-of-scope questions with honest refusal,
+            and ships a RAGAS evaluation report quantifying quality.
+        </p>
+        <div class="flex flex-wrap items-center justify-center gap-2 text-center text-sm mb-4">
+            <div class="bg-indigo-50 px-3 py-2 rounded-lg border border-indigo-100 font-medium text-indigo-900">UI or API</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-purple-50 px-3 py-2 rounded-lg border border-purple-100 font-medium text-purple-900">RAG Service</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-amber-50 px-3 py-2 rounded-lg border border-amber-100 font-medium text-amber-900">VectorStore (M5)</div>
+            <span class="text-stone-400">+</span>
+            <div class="bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-100 font-medium text-emerald-900">LLM Provider</div>
+            <span class="text-stone-400">+</span>
+            <div class="bg-stone-50 px-3 py-2 rounded-lg border border-stone-200 font-medium text-stone-800">Trace Log</div>
+            <span class="text-stone-400">+</span>
+            <div class="bg-indigo-50 px-3 py-2 rounded-lg border border-indigo-100 font-medium text-indigo-900">RAGAS Report</div>
+        </div>
+        <h4 class="font-semibold text-stone-800 mb-2">Acceptance criteria</h4>
+        <ul class="space-y-2 text-sm text-stone-700 mb-4">
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> Upload or batch ingest works for the chosen formats</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> Answers include citations; UI or API returns source metadata</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> Out-of-scope suite passes (no hallucinated policies)</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> <code class="bg-stone-100 px-1 rounded">evals/reports/m6-baseline.md</code> present and reproducible</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> README: architecture diagram, env vars, how to re-run eval</li>
+        </ul>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Criterion</th>
+                        <th class="border border-stone-200 p-2">Weight</th>
+                        <th class="border border-stone-200 p-2">Excellent</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2">Correctness</td>
+                        <td class="border border-stone-200 p-2">40%</td>
+                        <td class="border border-stone-200 p-2">Grounded answers; working refusals; stable ids</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2">Code quality</td>
+                        <td class="border border-stone-200 p-2">30%</td>
+                        <td class="border border-stone-200 p-2">Clear pipeline modules; uses M5 store abstraction; prompt versioned</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2">Evaluation evidence</td>
+                        <td class="border border-stone-200 p-2">30%</td>
+                        <td class="border border-stone-200 p-2">RAGAS (or equivalent) report on ≥30 items with config pinned</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <p class="text-sm text-stone-500 mt-4">
+            <strong>Bridge to M7:</strong> freeze golden JSONL, prompt version, embed model, retriever <code class="bg-stone-100 px-1 rounded">k</code> and filters, and <code class="bg-stone-100 px-1 rounded">m6-baseline.md</code> now.
+            That package is the input artifact for the Advanced RAG Upgrade mini project.
+        </p>
+    </div>
+
+    <!-- References -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">References &amp; Further Reading</h3>
+        <ul class="list-disc pl-5 text-sm text-stone-700 space-y-2">
+            <li><a href="https://docs.ragas.io/" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">RAGAS</a> — RAG evaluation framework</li>
+            <li><a href="https://python.langchain.com/docs/tutorials/rag/" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">LangChain — RAG tutorial</a> (optional accelerator)</li>
+            <li><a href="https://arxiv.org/abs/2005.11401" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks</a></li>
+            <li><a href="https://www.anthropic.com/news/contextual-retrieval" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">Anthropic — Contextual retrieval</a> (preview for M7)</li>
+        </ul>
+        <p class="mt-4 text-sm">
+            <a href="#m5" class="text-stone-500 hover:underline">← M5 Vector Databases</a>
+            <span class="text-stone-300 mx-2">·</span>
+            <a href="#m7" class="text-indigo-600 font-medium hover:underline">Next: M7 — Advanced RAG Optimization →</a>
+        </p>
+    </div>
+</section>

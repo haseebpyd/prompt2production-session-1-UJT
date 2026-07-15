@@ -1,0 +1,527 @@
+<section id="m4" class="chapter space-y-8">
+    <header>
+        <p class="text-sm font-semibold uppercase tracking-wide text-indigo-600 mb-2">Part II — Knowledge &amp; Retrieval · Module 4 · 2 days</p>
+        <h2 class="text-4xl font-bold text-stone-900">M4: Embeddings &amp; Semantic Search</h2>
+        <p class="text-lg text-stone-600 mt-2">
+            A support engineer types: <em>&ldquo;How do we rollback a bad release on Railway?&rdquo;</em>
+            Keyword search looks for the literal string <code class="bg-stone-100 px-1 rounded">rollback</code> and misses the runbook titled
+            <strong>Reverting a failed deploy.</strong> Semantic search maps both phrases into nearby vectors and surfaces the right page.
+            Embeddings are the address system for private knowledge — and this module forces you to earn that intuition before touching a vector database.
+        </p>
+        <div class="mt-4 bg-indigo-50 border border-indigo-100 rounded-lg p-4">
+            <p class="text-sm font-semibold text-indigo-900 mb-2">Learning objectives</p>
+            <ul class="list-disc pl-5 text-sm text-indigo-800 space-y-1">
+                <li>Explain what embeddings are and why they enable meaning-based search</li>
+                <li>Generate, store, and compare embeddings and choose an embedding model deliberately</li>
+                <li>Implement similarity search from scratch before adopting a vector database</li>
+                <li>Understand how chunking decisions drive retrieval quality</li>
+            </ul>
+        </div>
+    </header>
+
+    <!-- Why this matters -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">Why This Matters in Production</h3>
+        <p class="text-stone-700 mb-4">
+            Embeddings are not a research curiosity. They are the address system for <strong>AlrightTech Internal Docs</strong> — runbooks,
+            onboarding guides, pricing FAQs, and mentor policies. If you misunderstand them, every RAG system you build will retrieve the wrong
+            neighbors, and your LLM will confidently answer from the wrong neighborhood.
+        </p>
+        <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-900">
+            <strong>Engineer&rsquo;s contract:</strong> cosine similarity in NumPy, chunking experiments with measured hit rate, and a semantic
+            search engine <em>without</em> a vector database. Only after that pain do you graduate to Module 5.
+        </div>
+    </div>
+
+    <!-- Day 1 -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">Day 1 — Geometry, Models, and Naive Search</h3>
+
+        <h4 class="font-semibold text-stone-800 mb-2 mt-4">4.1 Meaning as Geometry</h4>
+        <p class="text-stone-700 mb-4">
+            An <strong>embedding</strong> is a fixed-length list of floats that places a piece of text in a high-dimensional space so that
+            <strong>similar meanings sit near each other</strong>. You do not need the full neural math — you need the engineering contract:
+        </p>
+        <div class="overflow-x-auto mb-4">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Idea</th>
+                        <th class="border border-stone-200 p-2">Engineering consequence</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Same model for query and documents</td>
+                        <td class="border border-stone-200 p-2">Mixing models (or versions) silently destroys recall</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Fixed dimension <code class="bg-stone-100 px-1 rounded">d</code></td>
+                        <td class="border border-stone-200 p-2">Index and DB schema must match <code class="bg-stone-100 px-1 rounded">d</code></td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Similarity ≈ proximity</td>
+                        <td class="border border-stone-200 p-2">Your ranker is a distance function over vectors</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Truncation / max tokens</td>
+                        <td class="border border-stone-200 p-2">Oversized chunks get clipped — meaning is lost before indexing</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <p class="text-sm text-stone-600">Think of each embedding as a coordinate. Search is: embed the query, find document coordinates closest to it.</p>
+
+        <h4 class="font-semibold text-stone-800 mb-2 mt-6">4.2 Similarity Metrics</h4>
+        <p class="text-stone-700 mb-3">Given vectors <strong>q</strong> (query) and <strong>d</strong> (document):</p>
+        <div class="overflow-x-auto mb-4">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Metric</th>
+                        <th class="border border-stone-200 p-2">Formula intuition</th>
+                        <th class="border border-stone-200 p-2">Use when</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr class="bg-indigo-50">
+                        <td class="border border-stone-200 p-2 font-medium">Cosine similarity</td>
+                        <td class="border border-stone-200 p-2">Angle between vectors; ignore length</td>
+                        <td class="border border-stone-200 p-2">Default for most text embeddings</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Dot product</td>
+                        <td class="border border-stone-200 p-2">Cosine × magnitudes</td>
+                        <td class="border border-stone-200 p-2">When vectors are L2-normalized, cosine ≡ dot</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Euclidean (L2) distance</td>
+                        <td class="border border-stone-200 p-2">Straight-line distance</td>
+                        <td class="border border-stone-200 p-2">Some indexes prefer distance; lower is better</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm mb-4">
+            <div class="border-l-4 border-emerald-500 pl-3">
+                <p class="font-semibold text-stone-800">Use cosine when</p>
+                <p class="text-stone-600">General semantic search with OpenAI / Cohere / Voyage / sentence-transformers.</p>
+            </div>
+            <div class="border-l-4 border-red-400 pl-3">
+                <p class="font-semibold text-stone-800">Skip / fix when</p>
+                <p class="text-stone-600">The store&rsquo;s index was built for a different metric than you query with — mismatch is a silent bug.</p>
+            </div>
+        </div>
+        <p class="text-stone-700 mb-2">Many pipelines L2-normalize embeddings once at ingest:</p>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm"><code>import numpy as np
+
+def l2_normalize(x: np.ndarray, eps: float = 1e-12) -&gt; np.ndarray:
+    norms = np.linalg.norm(x, axis=-1, keepdims=True)
+    return x / np.maximum(norms, eps)</code></pre>
+        <p class="text-sm text-stone-600 mt-2">After normalization, ranking by dot product equals ranking by cosine. Check whether norms are already unit length before picking a metric.</p>
+
+        <h4 class="font-semibold text-stone-800 mb-2 mt-6">4.3 Cosine Similarity by Hand</h4>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm"><code>import numpy as np
+
+def cosine_similarity(a: np.ndarray, b: np.ndarray) -&gt; float:
+    a = a.astype(np.float64)
+    b = b.astype(np.float64)
+    return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b) + 1e-12))
+
+# Toy 2-D "embeddings" for intuition only
+docs = {
+    "rollback_runbook": np.array([0.9, 0.1]),
+    "onboarding_wifi": np.array([0.1, 0.95]),
+    "pricing_faq": np.array([0.5, 0.5]),
+}
+query = np.array([0.85, 0.2])  # "how do we revert a deploy?"
+
+scores = {name: cosine_similarity(query, vec) for name, vec in docs.items()}
+ranked = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+print(ranked)
+# -&gt; [('rollback_runbook', ...), ...]</code></pre>
+        <p class="text-sm text-stone-600 mt-2">In real systems <code class="bg-stone-100 px-1 rounded">d</code> is 384–3072, not 2 — but the ranking logic is identical.</p>
+
+        <h4 class="font-semibold text-stone-800 mb-2 mt-6">4.4 Embedding Models (2025–26)</h4>
+        <div class="overflow-x-auto mb-4">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Family</th>
+                        <th class="border border-stone-200 p-2">Examples</th>
+                        <th class="border border-stone-200 p-2">Notes for engineers</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Hosted general</td>
+                        <td class="border border-stone-200 p-2">OpenAI <code class="bg-stone-100 px-1 rounded">text-embedding-3-small</code> / <code class="bg-stone-100 px-1 rounded">3-large</code></td>
+                        <td class="border border-stone-200 p-2">Strong default; pick dim via API truncation options</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Hosted retrieval-tuned</td>
+                        <td class="border border-stone-200 p-2">Cohere embed, Voyage</td>
+                        <td class="border border-stone-200 p-2">Often excel on retrieval benchmarks; price/latency trade-offs</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Open / local</td>
+                        <td class="border border-stone-200 p-2">BGE, E5, sentence-transformers</td>
+                        <td class="border border-stone-200 p-2">Privacy and cost at scale; run via local GPU/CPU</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <p class="text-stone-700 mb-3 text-sm">
+            <strong>MTEB</strong> (Massive Text Embedding Benchmark) is a useful leaderboard signal — not a guarantee on <em>your</em> AlrightTech tickets and PDFs.
+            Always A/B on a small labeled retrieval set from your domain. Pin a <strong>model + version</strong> in config; re-embedding everything is expensive.
+        </p>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm"><code># Pattern: one pinned embedder for the whole system
+import os
+from openai import OpenAI
+
+client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+EMBED_MODEL = "text-embedding-3-small"  # pin in config, not scattered calls
+
+def embed_texts(texts: list[str]) -&gt; list[list[float]]:
+    resp = client.embeddings.create(model=EMBED_MODEL, input=texts)
+    return [item.embedding for item in sorted(resp.data, key=lambda x: x.index)]</code></pre>
+
+        <h4 class="font-semibold text-stone-800 mb-2 mt-6">4.5 Building a Naive In-Memory Semantic Search</h4>
+        <p class="text-stone-700 mb-3 text-sm">Before Qdrant or pgvector, implement the algorithm you will rely on for the rest of your career:</p>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm"><code>from dataclasses import dataclass
+import numpy as np
+
+@dataclass
+class Chunk:
+    chunk_id: str
+    text: str
+    metadata: dict
+
+class InMemorySemanticIndex:
+    def __init__(self, embed_fn):
+        self.embed_fn = embed_fn
+        self.chunks: list[Chunk] = []
+        self.matrix: np.ndarray | None = None  # shape (n, d), L2-normalized
+
+    def add(self, chunks: list[Chunk]) -&gt; None:
+        vectors = np.array(self.embed_fn([c.text for c in chunks]), dtype=np.float64)
+        vectors = l2_normalize(vectors)
+        self.chunks.extend(chunks)
+        self.matrix = vectors if self.matrix is None else np.vstack([self.matrix, vectors])
+
+    def search(self, query: str, top_k: int = 5) -&gt; list[tuple[Chunk, float]]:
+        q = l2_normalize(np.array(self.embed_fn([query]), dtype=np.float64))[0]
+        scores = self.matrix @ q  # cosine via normalized dot
+        idx = np.argsort(scores)[::-1][:top_k]
+        return [(self.chunks[i], float(scores[i])) for i in idx]</code></pre>
+        <p class="text-sm text-stone-600 mt-2">This is slow at millions of rows — good. That pain is why Module 5 exists. First, prove you can rank correctly on hundreds of AlrightTech Internal Docs chunks.</p>
+
+        <h4 class="font-semibold text-stone-800 mb-2 mt-6">4.6 Multilingual and Domain-Specific Embeddings</h4>
+        <ul class="list-disc pl-5 text-stone-700 space-y-2 text-sm">
+            <li><strong>Multilingual models</strong> map cross-language paraphrases into one space — use when queries and docs speak different languages.</li>
+            <li><strong>Domain jargon</strong> (legal, medical, infra acronyms) often loses less from better chunking and metadata than from fine-tuning embeddings.</li>
+            <li><strong>Fine-tuning embeddings</strong> is worth it when you have ≥ thousands of labeled query↔document pairs and offline metrics have plateaued under strong chunking/hybrid baselines.</li>
+        </ul>
+    </div>
+
+    <!-- Day 2 -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">Day 2 — Chunking, Quality, and Pitfalls</h3>
+
+        <h4 class="font-semibold text-stone-800 mb-2">4.7 Chunking as Product Design</h4>
+        <p class="text-stone-700 mb-4">Chunking is not &ldquo;split on <code class="bg-stone-100 px-1 rounded">\n\n</code> and hope.&rdquo; Each chunk must be:</p>
+        <ol class="list-decimal pl-5 text-stone-700 space-y-1 mb-4 text-sm">
+            <li><strong>Embeddable</strong> — small enough that the embedding model sees the whole unit.</li>
+            <li><strong>Answerable</strong> — large enough (or linked via metadata) that a reader can use it alone or with a parent.</li>
+            <li><strong>Citable</strong> — stable <code class="bg-stone-100 px-1 rounded">chunk_id</code> and <code class="bg-stone-100 px-1 rounded">source</code> for Module 6 citations.</li>
+        </ol>
+        <div class="overflow-x-auto mb-4">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Strategy</th>
+                        <th class="border border-stone-200 p-2">How it works</th>
+                        <th class="border border-stone-200 p-2">Strength</th>
+                        <th class="border border-stone-200 p-2">Weakness</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Fixed size</td>
+                        <td class="border border-stone-200 p-2">N characters or tokens</td>
+                        <td class="border border-stone-200 p-2">Simple, predictable</td>
+                        <td class="border border-stone-200 p-2">Mid-sentence cuts; topic bleed</td>
+                    </tr>
+                    <tr class="bg-indigo-50">
+                        <td class="border border-stone-200 p-2 font-medium">Recursive</td>
+                        <td class="border border-stone-200 p-2">Split by headings → paragraphs → sentences</td>
+                        <td class="border border-stone-200 p-2">Respects document structure</td>
+                        <td class="border border-stone-200 p-2">Needs good separators</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Semantic</td>
+                        <td class="border border-stone-200 p-2">Split where topic/embedding shifts</td>
+                        <td class="border border-stone-200 p-2">Coherent topics</td>
+                        <td class="border border-stone-200 p-2">Heavier; hyperparameters</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Token-aware</td>
+                        <td class="border border-stone-200 p-2">Size by embedding model tokenizer</td>
+                        <td class="border border-stone-200 p-2">Matches model limits</td>
+                        <td class="border border-stone-200 p-2">Need tokenizer alignment</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <p class="text-stone-700 mb-3 text-sm">
+            <strong>Overlap:</strong> 10–20% overlap (e.g., 512-token chunks with 64–100 token overlap) reduces boundary misses. Too much overlap duplicates storage and dilutes rankings.
+        </p>
+        <p class="text-stone-700 mb-2 text-sm">Metadata to attach at chunk time (AlrightTech Internal Docs):</p>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm"><code>{
+  "source": "runbooks/revert-failed-deploy.md",
+  "doc_type": "runbook",
+  "updated_at": "2026-03-12",
+  "section": "Railway &gt; Rollback",
+  "tenant_id": "alrighttech",
+  "chunk_id": "runbooks/revert-failed-deploy.md#c003"
+}</code></pre>
+
+        <h4 class="font-semibold text-stone-800 mb-2 mt-6">4.8 Worked Example: Recursive-ish Splitter</h4>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm"><code>def split_recursive(text: str, max_chars: int = 1200, overlap: int = 150) -&gt; list[str]:
+    separators = ["\n## ", "\n### ", "\n\n", "\n", ". "]
+    if len(text) &lt;= max_chars:
+        return [text.strip()] if text.strip() else []
+
+    for sep in separators:
+        if sep in text:
+            parts = text.split(sep)
+            chunks: list[str] = []
+            buf = ""
+            for i, part in enumerate(parts):
+                piece = (sep + part) if i and sep.strip() else part
+                if len(buf) + len(piece) &lt;= max_chars:
+                    buf += piece
+                else:
+                    if buf.strip():
+                        chunks.append(buf.strip())
+                    buf = (buf[-overlap:] + piece) if overlap and buf else piece
+            if buf.strip():
+                chunks.append(buf.strip())
+            return chunks
+    return [text[i : i + max_chars] for i in range(0, len(text), max_chars - overlap)]</code></pre>
+        <p class="text-sm text-stone-600 mt-2">Tune <code class="bg-stone-100 px-1 rounded">max_chars</code> against your embedding model&rsquo;s token limit — prefer token-aware sizing in production.</p>
+
+        <h4 class="font-semibold text-stone-800 mb-2 mt-6">4.9 Measuring Retrieval: Hit Rate</h4>
+        <p class="text-stone-700 mb-3 text-sm">Do not optimize chunk size by aesthetic. Label a small gold set:</p>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm"><code>query_id | query | relevant_chunk_ids (gold)
+q001 | How do we rollback Railway? | runbooks/...#c003, runbooks/...#c004</code></pre>
+        <p class="text-stone-700 mb-2 text-sm"><strong>Hit rate@k:</strong> fraction of queries for which at least one gold chunk appears in the top-k results.</p>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm"><code>def hit_rate_at_k(results: list[list[str]], gold: list[set[str]], k: int) -&gt; float:
+    hits = 0
+    for ranked_ids, relevant in zip(results, gold):
+        if relevant &amp; set(ranked_ids[:k]):
+            hits += 1
+    return hits / max(len(gold), 1)</code></pre>
+        <p class="text-sm text-stone-600 mt-2">Compare embedding models and chunk configs with the <strong>same</strong> gold file. Module 7 will demand the same discipline for rerankers.</p>
+
+        <h4 class="font-semibold text-stone-800 mb-2 mt-6">4.10 Embedding Pitfalls (and Diagnostics)</h4>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Pitfall</th>
+                        <th class="border border-stone-200 p-2">Symptom</th>
+                        <th class="border border-stone-200 p-2">Fix</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Model/version drift</td>
+                        <td class="border border-stone-200 p-2">Sudden recall collapse after dependency bump</td>
+                        <td class="border border-stone-200 p-2">Pin model id + version; re-embed on change</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Dimension mismatch</td>
+                        <td class="border border-stone-200 p-2">Insert errors or silent padding</td>
+                        <td class="border border-stone-200 p-2">Assert <code class="bg-stone-100 px-1 rounded">len(vector) == expected_dim</code> on write</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Unnormalized mix</td>
+                        <td class="border border-stone-200 p-2">Unstable score thresholds</td>
+                        <td class="border border-stone-200 p-2">Normalize once; document metric</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Chunk-size sensitivity</td>
+                        <td class="border border-stone-200 p-2">Tiny chunks: no context; huge: diluted vectors</td>
+                        <td class="border border-stone-200 p-2">Sweep sizes; plot hit rate@k</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Query ≠ doc preprocessing</td>
+                        <td class="border border-stone-200 p-2">Asymmetric casing/boilerplate</td>
+                        <td class="border border-stone-200 p-2">Same normalize/strip pipeline both sides</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Title-only embedding</td>
+                        <td class="border border-stone-200 p-2">Body holds the answer</td>
+                        <td class="border border-stone-200 p-2">Include heading path in chunk text or metadata boost</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Decision guide -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">Engineering Decision Guide</h3>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Decision</th>
+                        <th class="border border-stone-200 p-2">Prefer</th>
+                        <th class="border border-stone-200 p-2">Avoid</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">First embedder</td>
+                        <td class="border border-stone-200 p-2">One hosted small model (<code class="bg-stone-100 px-1 rounded">text-embedding-3-small</code> or peer)</td>
+                        <td class="border border-stone-200 p-2">Fine-tuning on day one</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Index for learning</td>
+                        <td class="border border-stone-200 p-2">In-memory NumPy</td>
+                        <td class="border border-stone-200 p-2">Jumping straight to a managed cloud DB</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Chunk size</td>
+                        <td class="border border-stone-200 p-2">Start ~400–800 tokens with modest overlap</td>
+                        <td class="border border-stone-200 p-2">One chunk per entire PDF</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Eval</td>
+                        <td class="border border-stone-200 p-2">30–100 labeled queries</td>
+                        <td class="border border-stone-200 p-2">&ldquo;It found something sensible in the demo&rdquo;</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Multilingual need</td>
+                        <td class="border border-stone-200 p-2">Multilingual embedding model</td>
+                        <td class="border border-stone-200 p-2">Translating the whole corpus without measuring</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Failure modes -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">Failure Modes &amp; Diagnostics</h3>
+        <ol class="list-decimal pl-5 text-stone-700 space-y-3 text-sm">
+            <li><strong>Everything ranks near ~0.7–0.8</strong> — vectors may be too similar (boilerplate-heavy chunks) or metric broken. Inspect top text; strip nav/headers from AlrightTech docs.</li>
+            <li><strong>Good keywords, bad semantics</strong> — wrong model or oversized chunks. Run the chunking lab.</li>
+            <li><strong>Reproducibility fails</strong> — more often unstable chunk IDs than floating seeds. Stabilize <code class="bg-stone-100 px-1 rounded">chunk_id</code> generation (hash of source + offsets).</li>
+            <li><strong>Cost spike</strong> — re-embedding full corpus on every code change. Cache embeddings keyed by <code class="bg-stone-100 px-1 rounded">(model, text_hash)</code>.</li>
+        </ol>
+    </div>
+
+    <!-- Labs -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">Hands-on Labs</h3>
+        <div class="space-y-4">
+            <div class="border border-stone-200 rounded-lg p-4">
+                <h4 class="font-semibold text-stone-800">Lab 4.1 — Cosine Similarity and Cluster Intuition</h4>
+                <ol class="list-decimal pl-5 text-sm text-stone-700 mt-2 space-y-1">
+                    <li>Take 20 short sentences from AlrightTech Internal Docs (mix runbook, onboarding, pricing).</li>
+                    <li>Embed with one model; L2-normalize.</li>
+                    <li>Compute pairwise cosine matrix with NumPy.</li>
+                    <li>Optionally project with PCA/UMAP and color by <code class="bg-stone-100 px-1 rounded">doc_type</code>.</li>
+                </ol>
+                <p class="text-xs text-emerald-700 mt-2"><strong>Done when:</strong> you can point to two near neighbors that share meaning but not keywords, and explain why cosine (not Euclidean length) is what you plotted.</p>
+            </div>
+            <div class="border border-stone-200 rounded-lg p-4">
+                <h4 class="font-semibold text-stone-800">Lab 4.2 — Compare Embedding Models on Hit Rate</h4>
+                <ol class="list-decimal pl-5 text-sm text-stone-700 mt-2 space-y-1">
+                    <li>Build a 30-query gold set with relevant <code class="bg-stone-100 px-1 rounded">chunk_id</code>s.</li>
+                    <li>Embed corpus with two or three models (e.g., OpenAI small vs large, or OpenAI vs local BGE).</li>
+                    <li>Report hit rate@5 and mean latency/cost notes.</li>
+                </ol>
+                <p class="text-xs text-emerald-700 mt-2"><strong>Done when:</strong> Markdown table comparing models on the same chunks and gold labels, plus a written recommendation for M5–M7.</p>
+            </div>
+            <div class="border border-stone-200 rounded-lg p-4">
+                <h4 class="font-semibold text-stone-800">Lab 4.3 — Chunk Size and Overlap Experiment</h4>
+                <ol class="list-decimal pl-5 text-sm text-stone-700 mt-2 space-y-1">
+                    <li>Fix the embedding model from Lab 4.2.</li>
+                    <li>Sweep chunk sizes (256 / 512 / 1024 tokens) × overlaps (0 / 10% / 20%).</li>
+                    <li>Plot or tabulate hit rate@5.</li>
+                </ol>
+                <p class="text-xs text-emerald-700 mt-2"><strong>Done when:</strong> a clear winner (or Pareto note) with settings committed to config for the mini project.</p>
+            </div>
+            <div class="border border-stone-200 rounded-lg p-4">
+                <h4 class="font-semibold text-stone-800">Lab 4.4 — Semantic Search Over AlrightTech Internal Docs</h4>
+                <ol class="list-decimal pl-5 text-sm text-stone-700 mt-2 space-y-1">
+                    <li>Index a slice of AlrightTech Internal Docs with <code class="bg-stone-100 px-1 rounded">InMemorySemanticIndex</code>.</li>
+                    <li>CLI: <code class="bg-stone-100 px-1 rounded">python search.py "how do mentors get assigned?"</code></li>
+                    <li>Print top-k texts with scores and metadata.</li>
+                </ol>
+                <p class="text-xs text-emerald-700 mt-2"><strong>Done when:</strong> ranked, scored results for natural-language queries; README explains how to rebuild the index.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mini project -->
+    <div class="bg-white p-6 rounded-lg shadow-md border-2 border-indigo-200">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-2">Mini Project — Semantic Search Engine</h3>
+        <p class="text-stone-700 mb-4">
+            Build a documented Python tool that ingests a document corpus (AlrightTech Internal Docs minimum), chunks with durable
+            <code class="bg-stone-100 px-1 rounded">chunk_id</code>s, embeds and stores vectors in memory or on disk as NumPy <code class="bg-stone-100 px-1 rounded">.npz</code>
+            — <strong>no vector database</strong> — and answers natural-language queries with ranked, scored results plus a retrieval quality report.
+        </p>
+        <h4 class="font-semibold text-stone-800 mb-2">Required capabilities</h4>
+        <ul class="list-disc pl-5 text-sm text-stone-700 space-y-1 mb-4">
+            <li>Ingest Markdown/text (PDF optional); chunk with your chosen strategy</li>
+            <li>Embed with pinned model; store vectors in NumPy index</li>
+            <li>Query CLI returns top-k with text + metadata + score</li>
+            <li>Quality report comparing ≥ 2 chunking strategies on a fixed gold set (hit rate@k)</li>
+        </ul>
+        <h4 class="font-semibold text-stone-800 mb-2">Acceptance criteria</h4>
+        <ul class="space-y-2 text-sm text-stone-700 mb-4">
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> Query CLI or script returns top-k with scores</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> Config pins embedding model name and chunk parameters</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> Quality report (Markdown or CSV) shows chunking comparison</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> No Qdrant / Chroma / Pinecone / pgvector dependencies</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> README with setup, env vars, and how to regenerate the index</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> Gold set ≥ 20 queries; ≥ 2 chunk configs; hit rate@k tabulated</li>
+        </ul>
+        <p class="text-sm text-stone-500">Suggested layout: <code class="bg-stone-100 px-1 rounded">chunk/</code>, <code class="bg-stone-100 px-1 rounded">embed/</code>, <code class="bg-stone-100 px-1 rounded">index/</code>, <code class="bg-stone-100 px-1 rounded">eval/</code>, <code class="bg-stone-100 px-1 rounded">search.py</code>.</p>
+    </div>
+
+    <!-- Bridge -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">Bridge to Module 5</h3>
+        <p class="text-stone-700 mb-3 text-sm">
+            You now retrieve well on hundreds of chunks. Production corpora have <strong>millions</strong>, need <strong>filters</strong>
+            (<code class="bg-stone-100 px-1 rounded">doc_type</code>, <code class="bg-stone-100 px-1 rounded">tenant_id</code>), <strong>persistence</strong>, and
+            <strong>approximate</strong> nearest neighbors within milliseconds.
+        </p>
+        <p class="text-stone-700 text-sm">
+            <strong>Keep:</strong> pinned embedder, chunk config, gold set, <code class="bg-stone-100 px-1 rounded">chunk_id</code> scheme.<br>
+            <strong>Leave behind:</strong> the fantasy that brute-force NumPy scales forever.
+        </p>
+    </div>
+
+    <!-- References -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">References &amp; Further Reading</h3>
+        <ul class="list-disc pl-5 text-sm text-stone-700 space-y-2">
+            <li><a href="https://platform.openai.com/docs/guides/embeddings" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">OpenAI — Embeddings guide</a></li>
+            <li><a href="https://docs.cohere.com/docs/embeddings" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">Cohere — Embeddings</a></li>
+            <li><a href="https://www.sbert.net/" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">Sentence Transformers</a></li>
+            <li><a href="https://huggingface.co/spaces/mteb/leaderboard" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">MTEB Leaderboard</a></li>
+            <li><a href="https://numpy.org/doc/stable/" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">NumPy documentation</a></li>
+        </ul>
+        <p class="mt-6 text-sm flex flex-wrap gap-4">
+            <a href="#m3" class="text-stone-500 hover:underline">← M3 Structured Outputs &amp; Tool Calling</a>
+            <a href="#m5" class="text-indigo-600 font-medium hover:underline">Next: M5 — Vector Databases →</a>
+        </p>
+    </div>
+</section>

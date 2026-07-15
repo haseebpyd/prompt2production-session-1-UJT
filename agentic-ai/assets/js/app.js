@@ -3,6 +3,10 @@ const CHAPTERS = {
     m1: '01-llm-foundations',
     m2: '02-prompt-engineering',
     m3: '03-structured-outputs',
+    m4: '04-embeddings-semantic-search',
+    m5: '05-vector-databases',
+    m6: '06-retrieval-augmented-generation',
+    m7: '07-advanced-rag-optimization',
 };
 
 const CHAPTER_LABELS = {
@@ -10,6 +14,10 @@ const CHAPTER_LABELS = {
     m1: 'M1. LLM & AI Engineering Foundations',
     m2: 'M2. Prompt Engineering for Engineers',
     m3: 'M3. Structured Outputs & Tool Calling',
+    m4: 'M4. Embeddings & Semantic Search',
+    m5: 'M5. Vector Databases',
+    m6: 'M6. Retrieval-Augmented Generation (RAG)',
+    m7: 'M7. Advanced RAG & Retrieval Optimization',
 };
 
 const TARGET_TO_CHAPTER = Object.fromEntries(

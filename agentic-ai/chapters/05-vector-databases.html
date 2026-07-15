@@ -1,0 +1,521 @@
+<section id="m5" class="chapter space-y-8">
+    <header>
+        <p class="text-sm font-semibold uppercase tracking-wide text-indigo-600 mb-2">Part II — Knowledge &amp; Retrieval · Module 5 · 2 days</p>
+        <h2 class="text-4xl font-bold text-stone-900">M5: Vector Databases</h2>
+        <p class="text-lg text-stone-600 mt-2">
+            Your Module 4 NumPy index answered &ldquo;rollback Railway?&rdquo; beautifully on two hundred AlrightTech Internal Docs chunks.
+            Then product uploaded three years of Confluence exports. Brute-force cosine over the full matrix now costs more latency than your SLA allows —
+            and legal wants <strong>tenant isolation</strong> so Customer A never retrieves Customer B&rsquo;s contracts.
+            This module makes you operationally competent and ends with a swappable store layer that Modules 6 and 7 import without caring which backend is live.
+        </p>
+        <div class="mt-4 bg-indigo-50 border border-indigo-100 rounded-lg p-4">
+            <p class="text-sm font-semibold text-indigo-900 mb-2">Learning objectives</p>
+            <ul class="list-disc pl-5 text-sm text-indigo-800 space-y-1">
+                <li>Explain how vector databases index and search at scale using approximate nearest neighbors</li>
+                <li>Stand up and operate a production-capable vector store</li>
+                <li>Design collections, metadata filters, and hybrid search</li>
+                <li>Choose an appropriate vector database for a given use case</li>
+            </ul>
+        </div>
+    </header>
+
+    <!-- Why this matters -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">Why This Matters in Production</h3>
+        <p class="text-stone-700 mb-4">A vector database (or a vector index inside Postgres) exists to do three jobs well:</p>
+        <ol class="list-decimal pl-5 text-stone-700 space-y-2 mb-4">
+            <li><strong>Approximate</strong> nearest neighbor search at scale (recall vs latency trade-off).</li>
+            <li><strong>Filter</strong> by metadata in the same query (source, date, tenant).</li>
+            <li><strong>Persist</strong> and operate (upserts, deletes, backups, multi-tenancy).</li>
+        </ol>
+        <div class="bg-indigo-50 border border-indigo-100 rounded-lg p-4 text-sm text-indigo-900">
+            <strong>Course posture:</strong> stand up Qdrant and pgvector behind one Python <code class="bg-indigo-100 px-1 rounded">VectorStore</code> protocol.
+            Every later RAG lab reuses that abstraction — not vendor-specific types scattered through the app.
+        </div>
+    </div>
+
+    <!-- Day 1 -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">Day 1 — ANN, Landscape, and First Collections</h3>
+
+        <h4 class="font-semibold text-stone-800 mb-2 mt-4">5.1 Exact vs Approximate Nearest Neighbors</h4>
+        <p class="text-stone-700 mb-4 text-sm">
+            <strong>Exact</strong> search computes similarity against every vector (your NumPy matrix multiply). Correct, simple, O(n · d).<br>
+            <strong>Approximate nearest neighbors (ANN)</strong> trade a small amount of recall for large latency wins using indexes such as
+            <strong>HNSW</strong> (Hierarchical Navigable Small World graphs) or IVF-style partitions.
+        </p>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm mb-4">
+            <div class="border-l-4 border-emerald-500 pl-3">
+                <p class="font-semibold text-stone-800">Use ANN when</p>
+                <p class="text-stone-600">n is large enough that exact search breaks latency, or you need filtered search in-engine.</p>
+            </div>
+            <div class="border-l-4 border-red-400 pl-3">
+                <p class="font-semibold text-stone-800">Skip ANN when</p>
+                <p class="text-stone-600">n is tiny (hundreds) and exact search is already sub-millisecond — complexity without benefit.</p>
+            </div>
+        </div>
+        <p class="text-stone-700 mb-2 text-sm"><strong>Recall vs latency.</strong> Raising <code class="bg-stone-100 px-1 rounded">ef</code> / probe parameters usually increases recall and latency. Production work: pick a minimum recall@k on a held-out set, then minimize p95 latency under that constraint.</p>
+
+        <h4 class="font-semibold text-stone-800 mb-2 mt-6">5.2 HNSW Intuition (Engineer Depth, Not a Paper)</h4>
+        <p class="text-stone-700 mb-3 text-sm">
+            HNSW builds a multi-layer graph: coarse layers jump long distances; lower layers refine. Search walks the graph greedily toward the query.
+            You need not implement HNSW; you need to know:
+        </p>
+        <ul class="list-disc pl-5 text-stone-700 space-y-1 text-sm mb-4">
+            <li><strong>Build parameters</strong> affect memory and quality (e.g., <code class="bg-stone-100 px-1 rounded">M</code>, <code class="bg-stone-100 px-1 rounded">ef_construction</code>).</li>
+            <li><strong>Query parameters</strong> (e.g., <code class="bg-stone-100 px-1 rounded">ef_search</code>) are your runtime recall dial.</li>
+            <li>Filters may change how candidates are visited — test filtered recall separately.</li>
+        </ul>
+
+        <h4 class="font-semibold text-stone-800 mb-2 mt-6">5.3 Vector DB Landscape (2025–26)</h4>
+        <div class="overflow-x-auto mb-4">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Store</th>
+                        <th class="border border-stone-200 p-2">Shape</th>
+                        <th class="border border-stone-200 p-2">Fit</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr class="bg-indigo-50">
+                        <td class="border border-stone-200 p-2 font-medium">pgvector</td>
+                        <td class="border border-stone-200 p-2">Extension on Postgres</td>
+                        <td class="border border-stone-200 p-2">Teams already on Postgres; transactional metadata</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Qdrant</td>
+                        <td class="border border-stone-200 p-2">Dedicated vector DB</td>
+                        <td class="border border-stone-200 p-2">Strong filters, hybrid, self-host Docker</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Weaviate</td>
+                        <td class="border border-stone-200 p-2">Dedicated</td>
+                        <td class="border border-stone-200 p-2">Schema-centric, hybrid, modules ecosystem</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Pinecone</td>
+                        <td class="border border-stone-200 p-2">Managed SaaS</td>
+                        <td class="border border-stone-200 p-2">Fast to production; vendor lock-in and cost model</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Chroma</td>
+                        <td class="border border-stone-200 p-2">Lightweight</td>
+                        <td class="border border-stone-200 p-2">Prototypes and local demos; be deliberate before &ldquo;prod&rdquo;</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mb-4">
+            <div class="border border-stone-200 rounded-lg p-4">
+                <h5 class="font-semibold text-stone-800 mb-2">Prefer managed</h5>
+                <p class="text-stone-600">Small ops team; traffic spiky; need global SLA quickly.</p>
+            </div>
+            <div class="border border-stone-200 rounded-lg p-4">
+                <h5 class="font-semibold text-stone-800 mb-2">Prefer self-hosted</h5>
+                <p class="text-stone-600">Strict data residency; predictable high volume; already run Postgres/K8s.</p>
+            </div>
+        </div>
+
+        <h4 class="font-semibold text-stone-800 mb-2 mt-6">5.4 Data Model: Collections, Metrics, Payloads</h4>
+        <div class="overflow-x-auto mb-4">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Concept</th>
+                        <th class="border border-stone-200 p-2">Meaning</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Collection / index</td>
+                        <td class="border border-stone-200 p-2">Named universe of vectors with one dimension and distance metric</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Point / row</td>
+                        <td class="border border-stone-200 p-2">One vector + id + <strong>payload</strong> (metadata)</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Distance metric</td>
+                        <td class="border border-stone-200 p-2">Cosine / Dot / Euclid — must match how you embed</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Payload / metadata</td>
+                        <td class="border border-stone-200 p-2">Filterable fields: <code class="bg-stone-100 px-1 rounded">doc_type</code>, <code class="bg-stone-100 px-1 rounded">updated_at</code>, <code class="bg-stone-100 px-1 rounded">tenant_id</code>, <code class="bg-stone-100 px-1 rounded">source</code></td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Namespace / tenant</td>
+                        <td class="border border-stone-200 p-2">Collection-per-tenant or payload filter + strict enforcement</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <p class="text-stone-700 mb-2 text-sm">AlrightTech Internal Docs payload schema (carry forward from M4):</p>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm"><code>{
+  "source": "runbooks/revert-failed-deploy.md",
+  "doc_type": "runbook",
+  "updated_at": "2026-03-12",
+  "section": "Railway &gt; Rollback",
+  "tenant_id": "alrighttech",
+  "chunk_id": "runbooks/revert-failed-deploy.md#c003",
+  "text": "optional denormalized body for retrieval display"
+}</code></pre>
+
+        <h4 class="font-semibold text-stone-800 mb-2 mt-6">5.5 Standing Up Qdrant (Docker) and Loading M4 Corpus</h4>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm"><code>docker run -p 6333:6333 -p 6334:6334 \
+  -v $(pwd)/qdrant_storage:/qdrant/storage \
+  qdrant/qdrant</code></pre>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm mt-3"><code>from qdrant_client import QdrantClient
+from qdrant_client.http import models as qm
+
+client = QdrantClient(url="http://localhost:6333")
+COLLECTION = "alrighttech_docs"
+DIM = 1536  # must match your pinned M4 embedder
+
+client.recreate_collection(
+    collection_name=COLLECTION,
+    vectors_config=qm.VectorParams(size=DIM, distance=qm.Distance.COSINE),
+)
+
+client.upsert(
+    collection_name=COLLECTION,
+    points=[
+        qm.PointStruct(
+            id=1,
+            vector=embedding,
+            payload={
+                "chunk_id": "runbooks/revert-failed-deploy.md#c003",
+                "source": "runbooks/revert-failed-deploy.md",
+                "doc_type": "runbook",
+                "tenant_id": "alrighttech",
+                "text": chunk_text,
+            },
+        )
+    ],
+)</code></pre>
+
+        <h4 class="font-semibold text-stone-800 mb-2 mt-6">5.6 pgvector Sketch</h4>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm"><code>CREATE EXTENSION IF NOT EXISTS vector;
+
+CREATE TABLE chunks (
+  id BIGSERIAL PRIMARY KEY,
+  chunk_id TEXT UNIQUE NOT NULL,
+  tenant_id TEXT NOT NULL,
+  doc_type TEXT,
+  source TEXT,
+  text TEXT NOT NULL,
+  embedding vector(1536) NOT NULL
+);
+
+CREATE INDEX ON chunks USING hnsw (embedding vector_cosine_ops);</code></pre>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm mt-3"><code># Query pattern (psycopg)
+sql = """
+SELECT chunk_id, source, text, 1 - (embedding &lt;=&gt; %s::vector) AS score
+FROM chunks
+WHERE tenant_id = %s
+ORDER BY embedding &lt;=&gt; %s::vector
+LIMIT %s
+"""</code></pre>
+        <p class="text-sm text-stone-600 mt-2">Load the <strong>same</strong> M4 chunks into both stores in Lab 5.1 so comparisons are fair.</p>
+    </div>
+
+    <!-- Day 2 -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">Day 2 — Filters, Hybrid, Tenancy, and the Abstraction Layer</h3>
+
+        <h4 class="font-semibold text-stone-800 mb-2">5.7 Metadata Filtering</h4>
+        <p class="text-stone-700 mb-3 text-sm">
+            Semantic search alone will pull pricing FAQs into an infra question if wording drifts. Filters constrain the candidate universe:
+        </p>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm"><code># Qdrant: only runbooks for this tenant
+client.search(
+    collection_name=COLLECTION,
+    query_vector=query_vec,
+    query_filter=qm.Filter(
+        must=[
+            qm.FieldCondition(key="tenant_id", match=qm.MatchValue(value="alrighttech")),
+            qm.FieldCondition(key="doc_type", match=qm.MatchValue(value="runbook")),
+        ]
+    ),
+    limit=5,
+)</code></pre>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm mt-4 mb-4">
+            <div class="border-l-4 border-emerald-500 pl-3">
+                <p class="font-semibold text-stone-800">Use hard filters when</p>
+                <p class="text-stone-600">ACLs, tenant isolation, or &ldquo;only docs updated after X.&rdquo;</p>
+            </div>
+            <div class="border-l-4 border-red-400 pl-3">
+                <p class="font-semibold text-stone-800">Skip / relax when</p>
+                <p class="text-stone-600">Users ask cross-cutting questions and you filtered so hard nothing remains — log empty-result rates.</p>
+            </div>
+        </div>
+
+        <h4 class="font-semibold text-stone-800 mb-2 mt-6">5.8 Hybrid Search: Dense + Sparse (BM25)</h4>
+        <p class="text-stone-700 mb-3 text-sm">
+            Dense embeddings miss exact identifiers (<code class="bg-stone-100 px-1 rounded">ERR_DEPLOY_42</code>, SKUs, error codes). Keyword/BM25 catches them.
+            <strong>Hybrid</strong> retrieves from dense and sparse channels, then merges (simple weighted sum or RRF — Module 7 deep-dives fusion).
+        </p>
+        <p class="text-sm text-stone-600">Compare dense-only vs hybrid on queries that include product codes and paraphrases. Expect hybrid to win the mixed set.</p>
+
+        <h4 class="font-semibold text-stone-800 mb-2 mt-6">5.9 Reranking Teaser</h4>
+        <p class="text-stone-700 text-sm">
+            Two-stage retrieval: cheap ANN retrieves 50–100 candidates; a <strong>cross-encoder</strong> or Cohere Rerank reorders to top-5.
+            You will implement this properly in Module 7. For now: know that &ldquo;vector DB top-k&rdquo; is often a <strong>candidate generator</strong>, not the final ranking.
+        </p>
+
+        <h4 class="font-semibold text-stone-800 mb-2 mt-6">5.10 Upserts, Deletes, Namespaces, Multi-Tenancy</h4>
+        <div class="overflow-x-auto mb-4">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Operation</th>
+                        <th class="border border-stone-200 p-2">Production rule</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Upsert</td>
+                        <td class="border border-stone-200 p-2">Idempotent by <code class="bg-stone-100 px-1 rounded">chunk_id</code>; re-ingest must not duplicate</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Update</td>
+                        <td class="border border-stone-200 p-2">Prefer delete+insert or upsert of same id when text changes; re-embed</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Delete</td>
+                        <td class="border border-stone-200 p-2">Soft-delete flag vs hard delete — define retention</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Namespaces</td>
+                        <td class="border border-stone-200 p-2">Collection-per-tenant (strong isolation) vs <code class="bg-stone-100 px-1 rounded">tenant_id</code> filter (efficient, must never forget filter)</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <p class="text-stone-700 text-sm mb-4">
+            <strong>Multi-tenancy pattern for labs:</strong> payload field <code class="bg-stone-100 px-1 rounded">tenant_id</code> + <strong>mandatory</strong> filter in the repository API.
+            Never expose a raw <code class="bg-stone-100 px-1 rounded">search(vector)</code> that omits tenant.
+        </p>
+
+        <h4 class="font-semibold text-stone-800 mb-2 mt-6">5.11 Scaling, Persistence, Backups, Cost</h4>
+        <ul class="list-disc pl-5 text-stone-700 space-y-1 text-sm mb-4">
+            <li><strong>Persistence:</strong> mount volumes (Docker); snapshot schedules for Qdrant; Postgres <code class="bg-stone-100 px-1 rounded">pg_dump</code> / managed backups for pgvector.</li>
+            <li><strong>Memory:</strong> HNSW graphs are RAM-hungry — size nodes for vector count × dim × bytes × graph overhead.</li>
+            <li><strong>Cost:</strong> managed DBs charge for storage + query units; self-host trades money for ops time.</li>
+            <li><strong>Embed cache:</strong> changing one paragraph should re-embed one chunk, not the corpus.</li>
+        </ul>
+
+        <h4 class="font-semibold text-stone-800 mb-2 mt-6">5.12 Designing a Swappable Vector Store Layer</h4>
+        <p class="text-stone-700 mb-3 text-sm">Modules 6–7 must not import Qdrant types everywhere. Define a thin port:</p>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm"><code>from typing import Protocol, Any
+from dataclasses import dataclass
+
+@dataclass
+class VectorRecord:
+    chunk_id: str
+    text: str
+    embedding: list[float]
+    metadata: dict[str, Any]
+
+@dataclass
+class SearchHit:
+    chunk_id: str
+    text: str
+    score: float
+    metadata: dict[str, Any]
+
+class VectorStore(Protocol):
+    def ensure_collection(self, name: str, dim: int) -&gt; None: ...
+    def upsert(self, name: str, records: list[VectorRecord]) -&gt; None: ...
+    def query(
+        self,
+        name: str,
+        embedding: list[float],
+        top_k: int = 5,
+        filters: dict[str, Any] | None = None,
+    ) -&gt; list[SearchHit]: ...
+    def delete(self, name: str, chunk_ids: list[str]) -&gt; None: ...</code></pre>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm mt-3"><code># config.yaml
+vector_backend: qdrant  # or pgvector
+qdrant_url: http://localhost:6333
+pg_dsn: postgresql://...
+collection: alrighttech_docs
+embedding_dim: 1536</code></pre>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm mt-3"><code>def get_store(cfg) -&gt; VectorStore:
+    if cfg.vector_backend == "qdrant":
+        return QdrantStore(cfg)
+    if cfg.vector_backend == "pgvector":
+        return PgVectorStore(cfg)
+    raise ValueError(cfg.vector_backend)</code></pre>
+        <p class="text-sm text-stone-600 mt-2">This <strong>is</strong> the Module 5 mini project.</p>
+    </div>
+
+    <!-- Decision guide -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">Engineering Decision Guide</h3>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Situation</th>
+                        <th class="border border-stone-200 p-2">Lean toward</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Existing Postgres, moderate scale</td>
+                        <td class="border border-stone-200 p-2">pgvector</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Need rich payload filters + hybrid soon</td>
+                        <td class="border border-stone-200 p-2">Qdrant</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Zero-infra prototype overnight</td>
+                        <td class="border border-stone-200 p-2">Chroma / in-memory (swap before prod)</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Enterprise shared SaaS mandate</td>
+                        <td class="border border-stone-200 p-2">Pinecone / Weaviate Cloud — wrap behind <code class="bg-stone-100 px-1 rounded">VectorStore</code> anyway</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Multi-tenant SaaS</td>
+                        <td class="border border-stone-200 p-2">Shared collection + enforced <code class="bg-stone-100 px-1 rounded">tenant_id</code> or collection-per-tenant for high-risk data</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Failure modes -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">Failure Modes &amp; Diagnostics</h3>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Failure</th>
+                        <th class="border border-stone-200 p-2">Likely cause</th>
+                        <th class="border border-stone-200 p-2">Diagnostic</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Empty results</td>
+                        <td class="border border-stone-200 p-2">Filter too tight; wrong collection</td>
+                        <td class="border border-stone-200 p-2">Drop filters temporarily; count points</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Garbage neighbors</td>
+                        <td class="border border-stone-200 p-2">Metric/dim mismatch; wrong model</td>
+                        <td class="border border-stone-200 p-2">Assert dim; compare to M4 NumPy top-k</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Tenant leak</td>
+                        <td class="border border-stone-200 p-2">Forgot filter</td>
+                        <td class="border border-stone-200 p-2">Integration test: query as tenant A must never return B</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Latency regression</td>
+                        <td class="border border-stone-200 p-2"><code class="bg-stone-100 px-1 rounded">ef</code> too high; cold disk</td>
+                        <td class="border border-stone-200 p-2">Trace p95; check index loaded in RAM</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Duplicate chunks</td>
+                        <td class="border border-stone-200 p-2">Non-idempotent ingest</td>
+                        <td class="border border-stone-200 p-2">Unique on <code class="bg-stone-100 px-1 rounded">chunk_id</code>; upsert only</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Labs -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">Hands-on Labs</h3>
+        <div class="space-y-4">
+            <div class="border border-stone-200 rounded-lg p-4">
+                <h4 class="font-semibold text-stone-800">Lab 5.1 — Dual Load: Qdrant and pgvector</h4>
+                <ol class="list-decimal pl-5 text-sm text-stone-700 mt-2 space-y-1">
+                    <li>Start Qdrant via Docker; enable pgvector on a local Postgres.</li>
+                    <li>Export chunks from your M4 index (text + metadata + embeddings).</li>
+                    <li>Load into both backends with identical ids/metadata.</li>
+                </ol>
+                <p class="text-xs text-emerald-700 mt-2"><strong>Done when:</strong> same query returns overlapping top-5 <code class="bg-stone-100 px-1 rounded">chunk_id</code>s on both stores (allow minor rank swaps); notes on setup time and rough latency.</p>
+            </div>
+            <div class="border border-stone-200 rounded-lg p-4">
+                <h4 class="font-semibold text-stone-800">Lab 5.2 — Metadata-Filtered Search</h4>
+                <ol class="list-decimal pl-5 text-sm text-stone-700 mt-2 space-y-1">
+                    <li>Implement filter by <code class="bg-stone-100 px-1 rounded">doc_type</code> and by <code class="bg-stone-100 px-1 rounded">updated_at</code> ≥ date.</li>
+                    <li>Run: &ldquo;rollback procedure&rdquo; with <code class="bg-stone-100 px-1 rounded">doc_type=runbook</code> vs unfiltered.</li>
+                </ol>
+                <p class="text-xs text-emerald-700 mt-2"><strong>Done when:</strong> filtered query excludes FAQs/onboarding that unfiltered may include; document one case where filtering hurts.</p>
+            </div>
+            <div class="border border-stone-200 rounded-lg p-4">
+                <h4 class="font-semibold text-stone-800">Lab 5.3 — Hybrid vs Dense-Only</h4>
+                <ol class="list-decimal pl-5 text-sm text-stone-700 mt-2 space-y-1">
+                    <li>Add BM25 (or store hybrid API) over chunk text.</li>
+                    <li>Build a 15-query set that mixes paraphrases and exact error codes.</li>
+                    <li>Compare hit rate@5 dense-only vs hybrid.</li>
+                </ol>
+                <p class="text-xs text-emerald-700 mt-2"><strong>Done when:</strong> table of results; hybrid wins or ties on the mixed set; short analysis of which queries still fail.</p>
+            </div>
+            <div class="border border-stone-200 rounded-lg p-4">
+                <h4 class="font-semibold text-stone-800">Lab 5.4 — Multi-Tenant Collection Design</h4>
+                <ol class="list-decimal pl-5 text-sm text-stone-700 mt-2 space-y-1">
+                    <li>Insert chunks for <code class="bg-stone-100 px-1 rounded">tenant_id=acme</code> and <code class="bg-stone-100 px-1 rounded">tenant_id=globex</code>.</li>
+                    <li>Query as each tenant through your repository API <strong>only</strong>.</li>
+                    <li>Attempt a negative test that omits tenant (should be impossible via public API).</li>
+                </ol>
+                <p class="text-xs text-emerald-700 mt-2"><strong>Done when:</strong> no cross-tenant hits in positive tests; written isolation choice documented.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mini project -->
+    <div class="bg-white p-6 rounded-lg shadow-md border-2 border-indigo-200">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-2">Mini Project — Production Vector Store Layer</h3>
+        <p class="text-stone-700 mb-4">
+            Ship a reusable Python module that abstracts a vector DB with <code class="bg-stone-100 px-1 rounded">ensure_collection</code>,
+            <code class="bg-stone-100 px-1 rounded">upsert</code>, <code class="bg-stone-100 px-1 rounded">query</code> (vector + metadata filters), and
+            <code class="bg-stone-100 px-1 rounded">delete</code>. Config-swappable backends: <strong>pgvector ↔ Qdrant</strong>.
+            Reuse this module in every RAG lab that follows.
+        </p>
+        <h4 class="font-semibold text-stone-800 mb-2">Acceptance criteria</h4>
+        <ul class="space-y-2 text-sm text-stone-700 mb-4">
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> One integration test suite runs against both backends (Docker Compose recommended)</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> Filters include at least <code class="bg-stone-100 px-1 rounded">tenant_id</code> and one other field</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> README documents env vars, schema, and how to switch backends</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> M4 corpus successfully loaded via the abstraction (not via one-off scripts only)</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> Side-by-side query checklist + tenant isolation test results documented</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> Clean <code class="bg-stone-100 px-1 rounded">Protocol</code>; no leakage of vendor types into app layer</li>
+        </ul>
+        <p class="text-sm text-stone-500">Suggested layout: <code class="bg-stone-100 px-1 rounded">stores/</code>, <code class="bg-stone-100 px-1 rounded">tests/</code>, <code class="bg-stone-100 px-1 rounded">docker-compose.yml</code>, <code class="bg-stone-100 px-1 rounded">config.yaml</code>.</p>
+    </div>
+
+    <!-- Bridge -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">Bridge to Module 6</h3>
+        <p class="text-stone-700 text-sm">
+            You can store and retrieve at scale. Module 6 wires retrieval into <strong>generation</strong>: document loaders, prompt assembly with citations,
+            &ldquo;I don&rsquo;t know&rdquo; behavior, and <strong>RAGAS</strong> metrics so quality is measured — not debated.
+            Import your <code class="bg-stone-100 px-1 rounded">VectorStore</code>. Keep the pinned embedder from M4. Bring the gold queries — they become the seed of your RAG evaluation set.
+        </p>
+    </div>
+
+    <!-- References -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">References &amp; Further Reading</h3>
+        <ul class="list-disc pl-5 text-sm text-stone-700 space-y-2">
+            <li><a href="https://qdrant.tech/documentation/" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">Qdrant documentation</a></li>
+            <li><a href="https://github.com/pgvector/pgvector" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">pgvector</a></li>
+            <li><a href="https://weaviate.io/developers/weaviate" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">Weaviate docs</a></li>
+            <li><a href="https://docs.pinecone.io/" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">Pinecone docs</a></li>
+            <li><a href="https://www.trychroma.com/" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">Chroma</a></li>
+        </ul>
+        <p class="mt-6 text-sm flex flex-wrap gap-4">
+            <a href="#m4" class="text-stone-500 hover:underline">← M4 Embeddings &amp; Semantic Search</a>
+            <a href="#m6" class="text-indigo-600 font-medium hover:underline">Next: M6 — Retrieval-Augmented Generation →</a>
+        </p>
+    </div>
+</section>

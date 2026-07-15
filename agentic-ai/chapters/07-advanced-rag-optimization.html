@@ -1,0 +1,582 @@
+<section id="m7" class="chapter space-y-8">
+    <header>
+        <p class="text-sm font-semibold uppercase tracking-wide text-indigo-600 mb-2">Part II — Knowledge &amp; Retrieval · Module 7 · 3 days</p>
+        <h2 class="text-4xl font-bold text-stone-900">M7: Advanced RAG &amp; Retrieval Optimization</h2>
+        <p class="text-lg text-stone-600 mt-2">
+            Your Module 6 baseline answers many questions correctly — and quietly fails a stubborn set: multi-hop policies, exact error codes,
+            long handbooks where the answer sentence is drowned by neighbors, and queries phrased nothing like the documentation.
+            Advanced RAG is a <strong>disciplined upgrade loop</strong>: change one retrieval component, measure on the <strong>frozen M6 golden set</strong>,
+            keep the change only if the scorecard moves for the better without blowing latency or cost.
+        </p>
+        <div class="mt-4 bg-indigo-50 border border-indigo-100 rounded-lg p-4">
+            <p class="text-sm font-semibold text-indigo-900 mb-2">Learning objectives</p>
+            <ul class="list-disc pl-5 text-sm text-indigo-800 space-y-1">
+                <li>Apply advanced retrieval techniques that measurably raise answer quality</li>
+                <li>Implement reranking, query transformation, and hybrid/fusion pipelines</li>
+                <li>Handle structured data, large corpora, and agentic retrieval at a working level</li>
+                <li>Optimize a RAG system systematically against a fixed test set</li>
+            </ul>
+        </div>
+    </header>
+
+    <!-- Day 1 -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <p class="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-2">Day 1 — Query transformation &amp; reranking</p>
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">7.1 The Optimization Contract</h3>
+        <p class="text-stone-700 mb-4">Before any technique, lock the scientific method:</p>
+        <ol class="list-decimal pl-5 text-stone-700 space-y-2 mb-4 text-sm">
+            <li>Load <code class="bg-stone-100 px-1 rounded">evals/</code> golden set from Module 6 (<strong>do not edit labels mid-experiment</strong>).</li>
+            <li>Record <code class="bg-stone-100 px-1 rounded">m6-baseline.md</code> metrics.</li>
+            <li>Change <strong>one</strong> variable (e.g., add rerank).</li>
+            <li>Write <code class="bg-stone-100 px-1 rounded">m7-after-&lt;change&gt;.md</code>.</li>
+            <li>Promote to default only if net positive.</li>
+        </ol>
+        <div class="flex flex-wrap items-center justify-center gap-2 text-center text-sm mb-4">
+            <div class="bg-indigo-50 px-3 py-2 rounded-lg border border-indigo-100 font-medium text-indigo-900">M6 Baseline</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-purple-50 px-3 py-2 rounded-lg border border-purple-100 font-medium text-purple-900">Single change</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-amber-50 px-3 py-2 rounded-lg border border-amber-100 font-medium text-amber-900">Same golden set</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-100 font-medium text-emerald-900">Lift worth cost?</div>
+        </div>
+        <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-900">
+            <strong>Prerequisite artifacts from M6:</strong> frozen golden JSONL, prompt version, embed model, retriever <code class="bg-stone-100 px-1 rounded">k</code> and filters,
+            and <code class="bg-stone-100 px-1 rounded">evals/reports/m6-baseline.md</code>. Module 7 compares before/after on this exact package.
+        </div>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">7.2 Query Transformation</h3>
+        <p class="text-stone-700 mb-4">User questions are rarely ideal search strings.</p>
+        <div class="overflow-x-auto mb-4">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Technique</th>
+                        <th class="border border-stone-200 p-2">Idea</th>
+                        <th class="border border-stone-200 p-2">Use when</th>
+                        <th class="border border-stone-200 p-2">Skip when</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Query rewriting</td>
+                        <td class="border border-stone-200 p-2">LLM rewrites for retrieval (expand acronyms, add synonyms)</td>
+                        <td class="border border-stone-200 p-2">Colloquial questions; domain jargon</td>
+                        <td class="border border-stone-200 p-2">Already precise keyword queries; latency-critical path with no cache</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Multi-query</td>
+                        <td class="border border-stone-200 p-2">Generate N paraphrases; retrieve for each; fuse</td>
+                        <td class="border border-stone-200 p-2">Ambiguous single wording</td>
+                        <td class="border border-stone-200 p-2">Cost sensitive and N is large</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">HyDE</td>
+                        <td class="border border-stone-200 p-2">Generate a hypothetical answer doc; embed that</td>
+                        <td class="border border-stone-200 p-2">Short questions that embed poorly</td>
+                        <td class="border border-stone-200 p-2">High hallucination risk domains without careful prompts</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Step-back</td>
+                        <td class="border border-stone-200 p-2">Ask a broader question first; retrieve abstractions + specifics</td>
+                        <td class="border border-stone-200 p-2">Reasoning that needs principles then details</td>
+                        <td class="border border-stone-200 p-2">Simple factoid lookup</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm mb-4"><code>REWRITE_PROMPT = """Rewrite the user question as a search query over internal docs.
+Expand acronyms. Keep it one sentence. Do not answer the question.
+Question: {q}
+Search query:"""
+
+def rewrite_query(llm, q: str) -&gt; str:
+    return llm.complete(REWRITE_PROMPT.format(q=q)).strip()</code></pre>
+        <div class="bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-900">
+            <strong>HyDE caution:</strong> the hypothetical document must not be shown to the final answer model as <em>evidence</em> — it is only a retrieval probe.
+        </div>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">7.3 Multi-Query + Reciprocal Rank Fusion (RRF)</h3>
+        <p class="text-stone-700 mb-4">
+            Retrieve separately per rewritten query, then fuse ranks — not raw scores (scores are incomparable across channels).
+            Typical formula: RRF(d) = Σ 1/(k + rank_q(d)), with k = 60.
+        </p>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm mb-4"><code>from collections import defaultdict
+
+def rrf_fuse(rank_lists: list[list[str]], k: int = 60) -&gt; list[str]:
+    scores: dict[str, float] = defaultdict(float)
+    for ranks in rank_lists:
+        for r, doc_id in enumerate(ranks, start=1):
+            scores[doc_id] += 1.0 / (k + r)
+    return [d for d, _ in sorted(scores.items(), key=lambda x: x[1], reverse=True)]</code></pre>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+            <div class="bg-emerald-50 border border-emerald-200 p-4 rounded-lg">
+                <p class="font-semibold text-emerald-900">Use multi-query + RRF when</p>
+                <p class="text-emerald-800 mt-1">Single-query hit rate plateaus; paraphrases help context recall.</p>
+            </div>
+            <div class="bg-stone-50 border border-stone-200 p-4 rounded-lg">
+                <p class="font-semibold text-stone-800">Skip when</p>
+                <p class="text-stone-700 mt-1">p95 latency budget is already tight and you lack parallel retrieval.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">7.4 Two-Stage Retrieval: Reranking</h3>
+        <div class="flex flex-wrap items-center justify-center gap-2 text-center text-sm mb-4">
+            <div class="bg-indigo-50 px-3 py-2 rounded-lg border border-indigo-100 font-medium text-indigo-900">Query</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-purple-50 px-3 py-2 rounded-lg border border-purple-100 font-medium text-purple-900">ANN top-N (50–100)</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-amber-50 px-3 py-2 rounded-lg border border-amber-100 font-medium text-amber-900">CrossEncoder / Cohere</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-100 font-medium text-emerald-900">Top-k (5) → Generate</div>
+        </div>
+        <ul class="list-disc pl-5 text-stone-700 space-y-2 mb-4 text-sm">
+            <li><strong>Stage 1:</strong> cheap dense/hybrid retrieval (<code class="bg-stone-100 px-1 rounded">N</code> = 50–100).</li>
+            <li><strong>Stage 2:</strong> cross-encoder or Cohere Rerank scores <code class="bg-stone-100 px-1 rounded">(query, passage)</code> pairs; keep top 5.</li>
+            <li>Cross-encoders are accurate and slower; run on shortlists only.</li>
+        </ul>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm"><code># Pseudocode — sentence-transformers CrossEncoder
+# from sentence_transformers import CrossEncoder
+# model = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
+# pairs = [(query, hit.text) for hit in hits]
+# scores = model.predict(pairs)
+# reranked = sorted(zip(hits, scores), key=lambda x: x[1], reverse=True)</code></pre>
+        <p class="text-sm text-stone-600 mt-2">
+            <strong>Measure lift:</strong> context precision and faithfulness often rise; track added latency per request.
+            Cohere Rerank is a managed alternative — same two-stage pattern.
+        </p>
+    </div>
+
+    <!-- Day 2 -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <p class="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-2">Day 2 — Advanced indexing &amp; fusion routing</p>
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">7.5 Advanced Chunking &amp; Indexes</h3>
+        <p class="text-stone-700 mb-4">Naive equal chunks leave a trade-off: small chunks retrieve precisely but generate without context; large chunks reverse the pain.</p>
+        <div class="overflow-x-auto mb-4">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Pattern</th>
+                        <th class="border border-stone-200 p-2">Mechanism</th>
+                        <th class="border border-stone-200 p-2">Strength</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Parent-document</td>
+                        <td class="border border-stone-200 p-2">Embed small children; return larger parent to the LLM</td>
+                        <td class="border border-stone-200 p-2">Precision at retrieve, context at generate</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Sentence-window</td>
+                        <td class="border border-stone-200 p-2">Embed a sentence; expand ± window sentences at read time</td>
+                        <td class="border border-stone-200 p-2">Fine-grained match with local context</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Hierarchical / summary</td>
+                        <td class="border border-stone-200 p-2">Summaries at section/doc level; route then drill down</td>
+                        <td class="border border-stone-200 p-2">Large corpora; “which doc?” then “which paragraph?”</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm"><code># child embeds; parent_id in metadata; on hit, fetch parent text for the prompt
+child_meta = {
+    "parent_id": "runbooks/revert-failed-deploy.md#p01",
+    "chunk_id": "...#c003"
+}</code></pre>
+        <p class="text-sm text-stone-500 mt-2">Lab 7.3 compares parent-document vs sentence-window on the <strong>same</strong> AlrightTech corpus and golden set.</p>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">7.6 Hybrid + Fusion (Dense Meets BM25)</h3>
+        <p class="text-stone-700 mb-4">Module 5 introduced hybrid. Here you treat fusion as first-class:</p>
+        <ol class="list-decimal pl-5 text-stone-700 space-y-2 mb-4 text-sm">
+            <li>Dense ANN → list A</li>
+            <li>BM25 → list B</li>
+            <li>RRF(A, B) → candidate list</li>
+            <li>Optional rerank → final top-k</li>
+        </ol>
+        <p class="text-sm text-stone-600">Identifiers, SKUs, and stack traces usually need the sparse path; paraphrases need dense.</p>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">7.7 Metadata-Aware Routing</h3>
+        <p class="text-stone-700 mb-4">Not every question should hit the same index.</p>
+        <div class="flex flex-wrap items-center justify-center gap-2 text-center text-sm mb-4">
+            <div class="bg-indigo-50 px-3 py-2 rounded-lg border border-indigo-100 font-medium text-indigo-900">User query</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-purple-50 px-3 py-2 rounded-lg border border-purple-100 font-medium text-purple-900">Intent router</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-amber-50 px-3 py-2 rounded-lg border border-amber-100 font-medium text-amber-900">Vector RAG</div>
+            <span class="text-stone-400">/</span>
+            <div class="bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-100 font-medium text-emerald-900">Text-to-SQL</div>
+            <span class="text-stone-400">/</span>
+            <div class="bg-stone-50 px-3 py-2 rounded-lg border border-stone-200 font-medium text-stone-800">Web tool</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-indigo-50 px-3 py-2 rounded-lg border border-indigo-100 font-medium text-indigo-900">Answer synthesizer</div>
+        </div>
+        <p class="text-stone-700 mb-3 text-sm">Router can be: lightweight classifier, LLM with structured output (Part I), or rules on keywords.</p>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm mb-4"><code>from pydantic import BaseModel, Literal
+
+class Route(BaseModel):
+    target: Literal["vector", "sql", "web"]
+    reason: str
+
+# Force JSON/structured route; then dispatch.</code></pre>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+            <div class="bg-emerald-50 border border-emerald-200 p-4 rounded-lg">
+                <p class="font-semibold text-emerald-900">Use routers when</p>
+                <p class="text-emerald-800 mt-1">Multiple sources (docs + warehouse + web) with clear intents.</p>
+            </div>
+            <div class="bg-stone-50 border border-stone-200 p-4 rounded-lg">
+                <p class="font-semibold text-stone-800">Skip routers when</p>
+                <p class="text-stone-700 mt-1">A single corpus answers ≥95% of traffic — premature orchestration tax.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">7.8 Structured Data: Text-to-SQL &amp; Tabular Retrieval</h3>
+        <p class="text-stone-700 mb-4">PDFs about metrics are inferior to querying the warehouse.</p>
+        <ol class="list-decimal pl-5 text-stone-700 space-y-2 mb-4 text-sm">
+            <li>Expose <strong>schema cards</strong> (table names, columns, grain) as text in a small catalog index.</li>
+            <li>Retrieve relevant schema snippets.</li>
+            <li>Generate SQL under constraints (read-only, limit, allowlisted tables).</li>
+            <li>Execute; summarize rows back to the user with citations to <strong>query + schema version</strong>.</li>
+        </ol>
+        <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-900">
+            <strong>Security:</strong> never free-form SQL without allowlists and timeouts — Part III/IV harden this further.
+        </div>
+    </div>
+
+    <!-- Day 3 -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <p class="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-2">Day 3 — Agentic retrieval, cost/latency, Graph RAG</p>
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">7.9 Agentic &amp; Multi-Hop RAG</h3>
+        <p class="text-stone-700 mb-4">Some questions need <strong>iterative</strong> retrieval: find policy A, then retrieve the runbook A references.</p>
+        <div class="overflow-x-auto mb-4">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Level</th>
+                        <th class="border border-stone-200 p-2">Behavior</th>
+                        <th class="border border-stone-200 p-2">When</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Single-shot RAG</td>
+                        <td class="border border-stone-200 p-2">One retrieve → generate</td>
+                        <td class="border border-stone-200 p-2">Factoids, local SOP</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Multi-hop</td>
+                        <td class="border border-stone-200 p-2">Planned sequence of retrieves</td>
+                        <td class="border border-stone-200 p-2">Cross-referenced policies</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Agentic RAG</td>
+                        <td class="border border-stone-200 p-2">LLM chooses retrieve/rewrite/stop as tools</td>
+                        <td class="border border-stone-200 p-2">Open-ended research (bridge to Part III)</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm"><code>1) Retrieve for question
+2) Ask LLM: "What follow-up search queries would resolve missing facts?" (structured list)
+3) Retrieve for each; fuse; generate final answer</code></pre>
+        <p class="text-sm text-stone-600 mt-2">Cap hops (e.g., 2) and budget tokens — agentic loops burn money (preview of Module 8 failure modes).</p>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">7.10 Contextual Retrieval, Long Context &amp; Caching</h3>
+        <ul class="list-disc pl-5 text-stone-700 space-y-2 text-sm">
+            <li><strong>Contextual retrieval:</strong> prepend document/section context to each chunk <em>before</em> embedding (e.g., title + section path). Improves disambiguation; increases embed cost.</li>
+            <li><strong>Long-context models:</strong> stuffing more chunks can help <em>if</em> retrieval still picks well — long context is not a substitute for ranking.</li>
+            <li><strong>Caching:</strong> cache embeddings (content hash), cache rewrite results for frequent questions, and consider semantic cache for identical answers under stable docs.</li>
+        </ul>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">7.11 Graph RAG — Honest Scope</h3>
+        <p class="text-stone-700 mb-4">
+            <strong>Graph RAG</strong> links entities and relationships (people, services, tickets) so retrieval can walk edges, not only vectors.
+            Powerful for highly relational corpora; expensive to build and maintain.
+        </p>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+            <div class="bg-emerald-50 border border-emerald-200 p-4 rounded-lg">
+                <p class="font-semibold text-emerald-900">Use Graph RAG when</p>
+                <p class="text-emerald-800 mt-1">Questions are relational (“who owns service X and what runbook applies?”) and you can maintain the graph.</p>
+            </div>
+            <div class="bg-stone-50 border border-stone-200 p-4 rounded-lg">
+                <p class="font-semibold text-stone-800">Skip Graph RAG when</p>
+                <p class="text-stone-700 mt-1">Your corpus is mostly prose manuals — better chunking + rerank wins first.</p>
+            </div>
+        </div>
+        <p class="text-sm text-stone-500 mt-3">For this course: understand the idea and when it outgrows hybrid RAG. Do not block your mini project on a knowledge graph unless mentors approve a scoped vertical.</p>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">7.12 Cost &amp; Latency Tuning Checklist</h3>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Lever</th>
+                        <th class="border border-stone-200 p-2">Effect</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Smaller embed model</td>
+                        <td class="border border-stone-200 p-2">Cheaper ingest/query</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Lower N before rerank</td>
+                        <td class="border border-stone-200 p-2">Faster; may cut recall</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Parallel multi-query</td>
+                        <td class="border border-stone-200 p-2">Lower latency, higher fan-out cost</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Prompt cache / semantic cache</td>
+                        <td class="border border-stone-200 p-2">Big wins on repeated questions</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Right-size generator model</td>
+                        <td class="border border-stone-200 p-2">Often largest $ lever after retrieval quality stabilizes</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <p class="text-sm text-stone-600 mt-4">Always report <strong>$/question</strong> and <strong>p95 latency</strong> next to RAGAS deltas in the upgrade report.</p>
+    </div>
+
+    <!-- Decision guide -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">Engineering Decision Guide</h3>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Goal</th>
+                        <th class="border border-stone-200 p-2">First technique to try</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Better paraphrases</td>
+                        <td class="border border-stone-200 p-2">Query rewrite or multi-query + RRF</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Better precision among candidates</td>
+                        <td class="border border-stone-200 p-2">Cross-encoder / Cohere rerank</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Exact IDs / error codes</td>
+                        <td class="border border-stone-200 p-2">Hybrid dense + BM25</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Long handbook answers</td>
+                        <td class="border border-stone-200 p-2">Parent-document or sentence-window</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Mixed docs + DB</td>
+                        <td class="border border-stone-200 p-2">Intent router → vector vs SQL</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Stubborn multi-hop</td>
+                        <td class="border border-stone-200 p-2">Capped two-hop retrieve before full agents</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Failure modes -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">Failure Modes &amp; Diagnostics</h3>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Failure</th>
+                        <th class="border border-stone-200 p-2">Cause</th>
+                        <th class="border border-stone-200 p-2">Fix</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Eval lift, production regress</td>
+                        <td class="border border-stone-200 p-2">Golden set too narrow</td>
+                        <td class="border border-stone-200 p-2">Add production-sampled questions</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Latency doubles</td>
+                        <td class="border border-stone-200 p-2">Serial multi-query + heavy rerank</td>
+                        <td class="border border-stone-200 p-2">Parallelize; reduce N; cache rewrites</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">HyDE retrieves fiction clusters</td>
+                        <td class="border border-stone-200 p-2">Hypothetical too creative</td>
+                        <td class="border border-stone-200 p-2">Constrain HyDE; prefer rewrite</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Router sends SQL to vector</td>
+                        <td class="border border-stone-200 p-2">Weak route schema</td>
+                        <td class="border border-stone-200 p-2">Few-shot routes; rules for “count/avg”</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Cost explosion</td>
+                        <td class="border border-stone-200 p-2">Agentic loop without caps</td>
+                        <td class="border border-stone-200 p-2">Max hops, max tools, budget alarms</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Labs -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">Hands-on Labs</h3>
+        <div class="space-y-4">
+            <div class="border border-stone-200 rounded-lg p-4">
+                <h4 class="font-semibold text-stone-800">Lab 7.1 — Reranker lift over baseline</h4>
+                <ol class="list-decimal pl-5 text-sm text-stone-700 mt-2 space-y-1">
+                    <li>Retrieve <code class="bg-stone-100 px-1 rounded">N=50</code> from M6 retriever.</li>
+                    <li>Rerank to top-5 with cross-encoder or Cohere.</li>
+                    <li>Compare RAGAS + latency to <code class="bg-stone-100 px-1 rounded">m6-baseline.md</code>.</li>
+                </ol>
+                <p class="text-xs text-emerald-700 mt-2"><strong>Done when:</strong> written delta table (metrics + p95); decision: ship rerank by default? yes/no with rationale.</p>
+            </div>
+            <div class="border border-stone-200 rounded-lg p-4">
+                <h4 class="font-semibold text-stone-800">Lab 7.2 — Multi-query + RRF</h4>
+                <ol class="list-decimal pl-5 text-sm text-stone-700 mt-2 space-y-1">
+                    <li>Generate 3–5 query variants.</li>
+                    <li>Retrieve per variant; fuse with RRF; optional rerank.</li>
+                    <li>Measure context recall vs single-query.</li>
+                </ol>
+                <p class="text-xs text-emerald-700 mt-2"><strong>Done when:</strong> side-by-side hit rate / RAGAS on the frozen set; cost note: LLM rewrite tokens × N.</p>
+            </div>
+            <div class="border border-stone-200 rounded-lg p-4">
+                <h4 class="font-semibold text-stone-800">Lab 7.3 — Parent-document vs sentence-window</h4>
+                <ol class="list-decimal pl-5 text-sm text-stone-700 mt-2 space-y-1">
+                    <li>Build two indexes over the same corpus.</li>
+                    <li>Evaluate on the same golden questions.</li>
+                    <li>Pick a default for the upgrade project.</li>
+                </ol>
+                <p class="text-xs text-emerald-700 mt-2"><strong>Done when:</strong> comparison report with examples of wins/losses; config flag to switch strategies.</p>
+            </div>
+            <div class="border border-stone-200 rounded-lg p-4">
+                <h4 class="font-semibold text-stone-800">Lab 7.4 — Intent router (vector / SQL / web)</h4>
+                <ol class="list-decimal pl-5 text-sm text-stone-700 mt-2 space-y-1">
+                    <li>Define three sinks (vector RAG, mock SQL, mock web).</li>
+                    <li>Structured route with Pydantic.</li>
+                    <li>Log route accuracy on 20 labeled intents.</li>
+                </ol>
+                <p class="text-xs text-emerald-700 mt-2"><strong>Done when:</strong> ≥80% routing accuracy on the labeled set <em>or</em> documented error analysis; safe fallback: uncertain → vector RAG + “low confidence” note.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mini project -->
+    <div class="bg-white p-6 rounded-lg shadow-md border-2 border-indigo-200">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-2">Mini Project — Advanced RAG Upgrade</h3>
+        <p class="text-stone-700 mb-4">
+            Take the Module 6 Chat-With-Your-Docs app and add <strong>reranking</strong>, <strong>query rewriting</strong> (or multi-query),
+            and <strong>hybrid retrieval</strong> (dense + sparse with fusion). Produce a before/after evaluation on the <strong>same</strong> frozen test set
+            showing measurable gains. This stack is the retrieval core of your capstone.
+        </p>
+        <div class="flex flex-wrap items-center justify-center gap-2 text-center text-sm mb-4">
+            <div class="bg-indigo-50 px-3 py-2 rounded-lg border border-indigo-100 font-medium text-indigo-900">Question</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-purple-50 px-3 py-2 rounded-lg border border-purple-100 font-medium text-purple-900">Rewrite / multi-query</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-amber-50 px-3 py-2 rounded-lg border border-amber-100 font-medium text-amber-900">Dense + BM25</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-100 font-medium text-emerald-900">RRF → Rerank → Pack</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-indigo-50 px-3 py-2 rounded-lg border border-indigo-100 font-medium text-indigo-900">Cited answer</div>
+        </div>
+        <h4 class="font-semibold text-stone-800 mb-2">Acceptance criteria</h4>
+        <ul class="space-y-2 text-sm text-stone-700 mb-4">
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> M6 app still runs; upgrade toggles via config flags</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> Hybrid + rewrite/multi-query + rerank implemented and documented</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> <code class="bg-stone-100 px-1 rounded">evals/reports/m6-baseline.md</code> vs <code class="bg-stone-100 px-1 rounded">evals/reports/m7-upgrade.md</code> on identical golden set</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> At least one primary metric improves without catastrophic latency (define your SLA)</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> README section: “What changed and why we kept it.”</li>
+        </ul>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Criterion</th>
+                        <th class="border border-stone-200 p-2">Weight</th>
+                        <th class="border border-stone-200 p-2">Excellent</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2">Correctness</td>
+                        <td class="border border-stone-200 p-2">35%</td>
+                        <td class="border border-stone-200 p-2">Pipeline works; citations remain valid; refusals intact</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2">Code quality</td>
+                        <td class="border border-stone-200 p-2">25%</td>
+                        <td class="border border-stone-200 p-2">Config-driven stages; reuses M5 store; no dead experimental code in main path</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2">Evaluation evidence</td>
+                        <td class="border border-stone-200 p-2">40%</td>
+                        <td class="border border-stone-200 p-2">Frozen-set before/after; latency/cost notes; honest non-wins documented</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <p class="text-sm text-stone-500 mt-4">
+            <strong>Bridge to Part III:</strong> take forward the upgraded RAG service as a <code class="bg-stone-100 px-1 rounded">retriever</code> tool,
+            frozen evals (agents still need regression gates), and respect for budgets (hops, tokens, dollars).
+            Leave behind: the idea that a single top-k vector query is the whole knowledge layer.
+        </p>
+    </div>
+
+    <!-- Part II checkpoint -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">Part II Checkpoint</h3>
+        <p class="text-stone-700 mb-3">Before starting Part III — Agentic AI, confirm:</p>
+        <ul class="space-y-2 text-sm text-stone-700 mb-4">
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> You can explain embeddings, ANN, and RAG failure modes without slides</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> M4→M5→M6→M7 artifacts exist and compose (corpus, store layer, app, upgrade report)</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> Golden set is frozen and versioned</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> You know which lever to pull first when faithfulness drops in production</li>
+        </ul>
+        <p class="text-sm text-stone-500">That is the industry bar — not “we wrapped LangChain,” but “we measured and improved retrieval.”</p>
+        <p class="text-sm text-stone-500 mt-4">Part III (Module 8+) turns retrieval into a <strong>tool</strong> inside an agent loop: plan → act → observe, with memory and multi-agent orchestration. <em>Coming soon.</em></p>
+        <p class="mt-4 text-sm">
+            <a href="#m6" class="text-stone-500 hover:underline">← M6 Retrieval-Augmented Generation</a>
+            <span class="text-stone-300 mx-2">·</span>
+            <a href="#home" class="text-indigo-600 font-medium hover:underline">Back to course home →</a>
+        </p>
+    </div>
+
+    <!-- References -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">References &amp; Further Reading</h3>
+        <ul class="list-disc pl-5 text-sm text-stone-700 space-y-2">
+            <li><a href="https://www.sbert.net/examples/applications/retrieve_rerank/README.html" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">Sentence Transformers — Retrieve &amp; Rerank</a></li>
+            <li><a href="https://docs.cohere.com/docs/rerank" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">Cohere Rerank</a></li>
+            <li><a href="https://www.anthropic.com/news/contextual-retrieval" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">Anthropic — Contextual retrieval</a></li>
+            <li><a href="https://docs.ragas.io/" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">RAGAS</a> — before/after evaluation</li>
+            <li><a href="https://arxiv.org/abs/2312.10997" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">GraphRAG (Microsoft research overview)</a></li>
+        </ul>
+    </div>
+</section>
