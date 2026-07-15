@@ -42,7 +42,7 @@ const TARGET_TO_CHAPTER = Object.fromEntries(
 
 let currentTarget = 'home';
 let currentViewMode = 'ebook';
-let currentLectureId = 'lecture-0';
+let currentLectureId = 'lecture-1';
 let currentSlideIndex = 0;
 let searchIndex = [];
 let searchIndexReady = false;
@@ -447,7 +447,7 @@ function setViewMode(mode, options = {}) {
     });
 
     if (mode === 'lecture') {
-        const lectureId = options.lectureId || currentLectureId || 'lecture-0';
+        const lectureId = options.lectureId || currentLectureId || 'lecture-1';
         const slideIndex = options.slideIndex ?? loadSlideIndex(lectureId);
         loadLecture(lectureId, slideIndex);
     } else {
@@ -498,7 +498,7 @@ function initViewMode() {
     } else {
         const storedMode = localStorage.getItem(VIEW_MODE_KEY) || 'ebook';
         if (storedMode === 'lecture') {
-            setViewMode('lecture', { lectureId: 'lecture-0' });
+            setViewMode('lecture', { lectureId: 'lecture-1' });
         } else if (hash && TARGET_TO_CHAPTER[hash]) {
             setViewMode('ebook', { target: hash });
         } else {
