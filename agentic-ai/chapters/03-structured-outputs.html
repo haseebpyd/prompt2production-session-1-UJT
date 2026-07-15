@@ -1,0 +1,289 @@
+<section id="m3" class="chapter space-y-8">
+    <header>
+        <p class="text-sm font-semibold uppercase tracking-wide text-indigo-600 mb-2">Part I — Foundations · Module 3 · 2 days</p>
+        <h2 class="text-4xl font-bold text-stone-900">M3: Structured Outputs, Function &amp; Tool Calling</h2>
+        <p class="text-lg text-stone-600 mt-2">
+            Free-text answers are fine for chat. They break pipelines. This module teaches you to treat the model as a
+            <strong>typed component</strong>: schema-constrained outputs, validation/retry, and the tool-call loop that later powers agents —
+            implemented by hand <em>before</em> you reach for agent frameworks.
+        </p>
+        <div class="mt-4 bg-indigo-50 border border-indigo-100 rounded-lg p-4">
+            <p class="text-sm font-semibold text-indigo-900 mb-2">Learning objectives</p>
+            <ul class="list-disc pl-5 text-sm text-indigo-800 space-y-1">
+                <li>Force valid, schema-constrained data reliably enough for real pipelines</li>
+                <li>Implement function/tool calling to connect models to your code and external APIs</li>
+                <li>Validate, parse, and repair model output defensively</li>
+                <li>Understand the tool-call mechanics that later power agents (Part III)</li>
+            </ul>
+        </div>
+    </header>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">3.1 Why Free Text Breaks Pipelines</h3>
+        <p class="text-stone-700 mb-4">
+            Downstream code expects contracts: field names, types, enums, nullability. Models prefer prose. Even a “please return JSON” prompt fails under load —
+            preambles (“Sure!”), trailing commas, wrong types (<code class="bg-stone-100 px-1 rounded">"42"</code> vs <code class="bg-stone-100 px-1 rounded">42</code>), missing keys, invented keys.
+        </p>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+            <div class="bg-red-50 border border-red-200 p-4 rounded-lg">
+                <p class="font-semibold text-red-900">Chat product</p>
+                <p class="text-red-800 mt-1">Human reads ambiguity. OK for demos.</p>
+            </div>
+            <div class="bg-amber-50 border border-amber-200 p-4 rounded-lg">
+                <p class="font-semibold text-amber-900">Automation</p>
+                <p class="text-amber-900 mt-1">One bad parse = failed job, wrong DB write, or silent corruption.</p>
+            </div>
+            <div class="bg-emerald-50 border border-emerald-200 p-4 rounded-lg">
+                <p class="font-semibold text-emerald-900">Engineering fix</p>
+                <p class="text-emerald-800 mt-1">Schema + validation + retry + typed errors. Never “best effort JSON.”</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">3.2 JSON Mode, JSON Schema &amp; Native Structured Outputs</h3>
+        <p class="text-stone-700 mb-3">Providers give escalating guarantees:</p>
+        <ol class="list-decimal pl-5 text-stone-700 space-y-2 mb-4 text-sm">
+            <li><strong>Prompt-only JSON</strong> — weakest; always validate.</li>
+            <li><strong>JSON mode / response_format json_object</strong> — encourages valid JSON object, not your schema.</li>
+            <li><strong>Structured outputs / JSON Schema</strong> — constrains to a schema (provider-dependent maturity).</li>
+        </ol>
+        <pre class="bg-stone-900 text-green-400 p-4 rounded-lg text-xs overflow-x-auto mb-3"><code># OpenAI-style sketch — check current docs for exact API
+from openai import OpenAI
+client = OpenAI()
+
+schema = {
+    "type": "object",
+    "properties": {
+        "sentiment": {"type": "string", "enum": ["positive", "negative", "neutral"]},
+        "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+    },
+    "required": ["sentiment", "confidence"],
+    "additionalProperties": False,
+}
+
+resp = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[{"role": "user", "content": "Review: shipping was late but support helped."}],
+    response_format={
+        "type": "json_schema",
+        "json_schema": {"name": "sentiment_result", "schema": schema, "strict": True},
+    },
+)</code></pre>
+        <p class="text-sm text-stone-500">
+            Docs:
+            <a href="https://platform.openai.com/docs/guides/structured-outputs" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">OpenAI Structured Outputs</a> ·
+            <a href="https://docs.anthropic.com/en/docs/build-with-claude/structured-outputs" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">Anthropic structured outputs</a> ·
+            <a href="https://ai.google.dev/gemini-api/docs/structured-output" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">Gemini structured output</a>.
+        </p>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">3.3 Pydantic as the Data Contract (+ Instructor)</h3>
+        <p class="text-stone-700 mb-3">
+            In Python, <a href="https://docs.pydantic.dev/" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">Pydantic</a> models are your product types.
+            Libraries like <a href="https://python.useinstructor.com/" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">Instructor</a> wrap provider calls to return validated models and retry on validation failure.
+        </p>
+        <pre class="bg-stone-900 text-green-400 p-4 rounded-lg text-xs overflow-x-auto mb-3"><code>from pydantic import BaseModel, Field, EmailStr
+from typing import Optional
+import instructor
+from openai import OpenAI
+
+class InvoiceLine(BaseModel):
+    description: str
+    amount_usd: float = Field(ge=0)
+
+class Invoice(BaseModel):
+    vendor: str
+    invoice_id: str
+    total_usd: float = Field(ge=0)
+    contact_email: Optional[EmailStr] = None
+    lines: list[InvoiceLine]
+
+client = instructor.from_openai(OpenAI())
+
+invoice = client.chat.completions.create(
+    model="gpt-4o-mini",
+    response_model=Invoice,
+    messages=[
+        {"role": "system", "content": "Extract invoice fields. Invent nothing. Use null when missing."},
+        {"role": "user", "content": raw_email_text},
+    ],
+    max_retries=2,
+)</code></pre>
+        <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-900">
+            Validation failure is a <strong>feature</strong>. Retry with the error message fed back to the model, or fail the request with a typed 422 — do not silently coerce garbage into your database.
+        </div>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">3.4 Function / Tool Calling Loop</h3>
+        <p class="text-stone-700 mb-4">
+            Tools let the model choose when to call your functions. You still own execution, permissions, and side effects.
+            The canonical loop (names vary by SDK):
+        </p>
+        <div class="flex flex-wrap items-center justify-center gap-2 text-center text-sm mb-4">
+            <div class="bg-indigo-50 px-3 py-2 rounded-lg border border-indigo-100 font-medium text-indigo-900">User request</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-purple-50 px-3 py-2 rounded-lg border border-purple-100 font-medium text-purple-900">Model (± tool_calls)</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-amber-50 px-3 py-2 rounded-lg border border-amber-100 font-medium text-amber-900">Your code runs tool</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-100 font-medium text-emerald-900">tool_result message</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-indigo-50 px-3 py-2 rounded-lg border border-indigo-100 font-medium text-indigo-900">Final answer</div>
+        </div>
+        <pre class="bg-stone-900 text-green-400 p-4 rounded-lg text-xs overflow-x-auto mb-3"><code>tools = [{
+    "type": "function",
+    "function": {
+        "name": "get_weather",
+        "description": "Get current weather for a city",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "city": {"type": "string"},
+                "unit": {"type": "string", "enum": ["c", "f"]},
+            },
+            "required": ["city"],
+        },
+    },
+}]
+
+def get_weather(city: str, unit: str = "c") -> dict:
+    # Replace with real API; never execute unreviewed code from the model
+    return {"city": city, "temp": 22, "unit": unit}
+
+# Pseudocode loop:
+# 1) send messages + tools
+# 2) if finish_reason/tool_calls: execute each call safely; append tool results
+# 3) call model again until a normal assistant message (or max rounds)</code></pre>
+        <ul class="list-disc pl-5 text-sm text-stone-700 space-y-2">
+            <li><strong>tool_choice</strong> — <code class="bg-stone-100 px-1 rounded">auto</code> | force a tool | <code class="bg-stone-100 px-1 rounded">none</code> (provider names differ).</li>
+            <li><strong>Parallel tool calls</strong> — models may request multiple tools in one turn; execute concurrently when safe; preserve call IDs in results.</li>
+            <li><strong>Streaming</strong> — tool call arguments may arrive in chunks; buffer until complete before executing.</li>
+            <li><strong>Security</strong> — allowlist tools; validate arguments with Pydantic; never <code class="bg-stone-100 px-1 rounded">eval</code>; treat model as untrusted for authz.</li>
+        </ul>
+        <p class="text-sm text-stone-500 mt-3">
+            <a href="https://platform.openai.com/docs/guides/function-calling" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">OpenAI function calling</a> ·
+            <a href="https://docs.anthropic.com/en/docs/build-with-claude/tool-use" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">Anthropic tool use</a> ·
+            <a href="https://ai.google.dev/gemini-api/docs/function-calling" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">Gemini function calling</a>.
+        </p>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">3.5 Defensive Parsing, Repair &amp; Fallbacks</h3>
+        <p class="text-stone-700 mb-3">Even with structured modes, build a belt-and-suspenders parser layer:</p>
+        <ol class="list-decimal pl-5 text-sm text-stone-700 space-y-2 mb-4">
+            <li>Strip markdown fences if present.</li>
+            <li><code class="bg-stone-100 px-1 rounded">json.loads</code> → Pydantic <code class="bg-stone-100 px-1 rounded">model_validate</code>.</li>
+            <li>On failure: optional <strong>repair prompt</strong> (“Return valid JSON conforming to this schema. Errors: …”).</li>
+            <li>Cap retries (e.g. 2). Then return a typed error to the client.</li>
+            <li>Fallback: smaller specialized model, regex for highly constrained fields, or human review queue.</li>
+        </ol>
+        <pre class="bg-stone-900 text-green-400 p-4 rounded-lg text-xs overflow-x-auto"><code>import json, re
+from pydantic import ValidationError
+
+def extract_json_object(text: str) -> dict:
+    text = text.strip()
+    fence = re.search(r"```(?:json)?\\s*([\\s\\S]*?)```", text)
+    if fence:
+        text = fence.group(1).strip()
+    return json.loads(text)
+
+def parse_invoice(text: str) -> Invoice:
+    try:
+        return Invoice.model_validate(extract_json_object(text))
+    except (json.JSONDecodeError, ValidationError) as e:
+        raise ValueError(f"invalid_invoice_payload: {e}") from e</code></pre>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">3.6 Cost &amp; Latency of Constrained Generation</h3>
+        <ul class="list-disc pl-5 text-sm text-stone-700 space-y-2">
+            <li>Structured outputs can add TTFT or token overhead depending on provider implementation.</li>
+            <li>Retries multiply cost — log failure rates; fix prompts/schemas before raising max_retries.</li>
+            <li>Tool loops add round-trips — set <code class="bg-stone-100 px-1 rounded">max_rounds</code>, cache tool results, and avoid chatty tools.</li>
+            <li>Prefer extracting once into typed state, then template the user-facing prose — do not re-prompt for format if you already have fields.</li>
+        </ul>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">Hands-on Labs</h3>
+        <div class="space-y-4">
+            <div class="border border-stone-200 rounded-lg p-4">
+                <h4 class="font-semibold text-stone-800">Lab A — Invoice / email extraction</h4>
+                <p class="text-sm text-stone-700 mt-2">Build a Pydantic model for messy invoices or emails. Use Instructor or native structured outputs. Cover missing fields and malformed currency in retries.</p>
+            </div>
+            <div class="border border-stone-200 rounded-lg p-4">
+                <h4 class="font-semibold text-stone-800">Lab B — Hand-rolled tool loop</h4>
+                <p class="text-sm text-stone-700 mt-2">Define <code class="bg-stone-100 px-1 rounded">get_weather</code> and <code class="bg-stone-100 px-1 rounded">search_docs</code> (stub OK). Implement the full request → tool_call → tool_result → response loop <strong>without</strong> LangChain/LangGraph.</p>
+            </div>
+            <div class="border border-stone-200 rounded-lg p-4">
+                <h4 class="font-semibold text-stone-800">Lab C — Multi-tool routing</h4>
+                <p class="text-sm text-stone-700 mt-2">Give three tools; write queries that require one, two, or parallel calls. Assert which tools ran.</p>
+            </div>
+            <div class="border border-stone-200 rounded-lg p-4">
+                <h4 class="font-semibold text-stone-800">Lab D — Repair parser</h4>
+                <p class="text-sm text-stone-700 mt-2">Feed intentionally broken model JSON (trailing commas, single quotes, prose prefix). Build a repair+revalidate path with a max of two repairs.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md border-2 border-indigo-200">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-2">Mini Project — Structured Data Extraction Service</h3>
+        <p class="text-stone-700 mb-4">
+            A <a href="https://fastapi.tiangolo.com/" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">FastAPI</a> endpoint that accepts raw documents and returns validated, typed JSON —
+            with retry/repair, clean errors, and a test suite for malformed inputs.
+        </p>
+        <h4 class="font-semibold text-stone-800 mb-2">Suggested API</h4>
+        <pre class="bg-stone-900 text-green-400 p-4 rounded-lg text-xs overflow-x-auto mb-4"><code>POST /extract
+Content-Type: application/json
+{ "document_type": "invoice", "text": "..." }
+
+# 200 → { "data": { ...typed... }, "meta": { "model", "retries", "latency_ms" } }
+# 422 → { "error": "validation_failed", "details": [...] }</code></pre>
+        <h4 class="font-semibold text-stone-800 mb-2">Acceptance criteria</h4>
+        <ul class="space-y-2 text-sm text-stone-700 mb-4">
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> FastAPI app with OpenAPI schema reflecting your Pydantic models</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> At least one <code class="bg-stone-100 px-1 rounded">document_type</code> fully implemented (invoice <em>or</em> support email)</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> Validation + max 2 retries/repairs; meta includes retry count</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> Pytest suite: happy path, missing fields, garbage input, oversized input policy</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> README with run instructions, env vars, and sample curl</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> No secrets committed; rate-limit note in README</li>
+        </ul>
+        <p class="text-sm text-stone-500">
+            This service becomes a building block for later RAG/agents: extract → store → retrieve → answer with citations.
+        </p>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">Part I Checkpoint</h3>
+        <p class="text-stone-700 mb-3">Before starting Part II, you should be able to:</p>
+        <ul class="space-y-2 text-sm text-stone-700">
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> Call ≥2 providers with logged latency/tokens/cost</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> Ship versioned prompts with a golden set</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> Return validated Pydantic models from an LLM call</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> Implement a tool-call loop without an agent framework</li>
+        </ul>
+        <p class="text-sm text-stone-500 mt-4">Part II will add embeddings, vector stores, and RAG — so the model can answer from <em>your</em> data.</p>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">References &amp; Further Reading</h3>
+        <ul class="list-disc pl-5 text-sm text-stone-700 space-y-2">
+            <li><a href="https://docs.pydantic.dev/" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">Pydantic documentation</a></li>
+            <li><a href="https://python.useinstructor.com/" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">Instructor</a></li>
+            <li><a href="https://fastapi.tiangolo.com/" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">FastAPI documentation</a></li>
+            <li><a href="https://json-schema.org/learn/getting-started-step-by-step" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">JSON Schema — Getting started</a></li>
+            <li><a href="https://platform.openai.com/docs/guides/structured-outputs" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">OpenAI Structured Outputs</a></li>
+            <li><a href="https://platform.openai.com/docs/guides/function-calling" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">OpenAI Function calling</a></li>
+            <li><a href="https://docs.anthropic.com/en/docs/build-with-claude/tool-use" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">Anthropic Tool use</a></li>
+            <li><a href="https://ai.google.dev/gemini-api/docs/function-calling" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">Gemini Function calling</a></li>
+        </ul>
+        <p class="mt-6 text-sm">
+            <a href="#m2" class="text-stone-500 hover:underline">← M2 Prompt Engineering</a>
+            <span class="text-stone-300 mx-2">·</span>
+            <a href="#home" class="text-indigo-600 font-medium hover:underline">Back to course home</a>
+        </p>
+    </div>
+</section>

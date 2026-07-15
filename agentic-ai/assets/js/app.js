@@ -1,9 +1,15 @@
 const CHAPTERS = {
     home: 'home',
+    m1: '01-llm-foundations',
+    m2: '02-prompt-engineering',
+    m3: '03-structured-outputs',
 };
 
 const CHAPTER_LABELS = {
     home: 'Home & Overview',
+    m1: 'M1. LLM & AI Engineering Foundations',
+    m2: 'M2. Prompt Engineering for Engineers',
+    m3: 'M3. Structured Outputs & Tool Calling',
 };
 
 const TARGET_TO_CHAPTER = Object.fromEntries(

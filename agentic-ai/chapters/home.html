@@ -1,14 +1,251 @@
-<div class="max-w-3xl mx-auto py-10">
-    <p class="text-sm font-semibold uppercase tracking-wide text-indigo-600 dark:text-indigo-400 mb-3">Agentic AI Engineer</p>
-    <h1 class="text-3xl md:text-4xl font-bold text-stone-900 dark:text-stone-50 mb-4 tracking-tight">Course materials coming soon</h1>
-    <p class="text-lg text-stone-600 dark:text-stone-300 leading-relaxed mb-8">
-        This space will hold the ebook and lectures for the Agentic AI Engineer track.
-        Content will be added when materials are ready.
-    </p>
-    <div class="rounded-lg border border-dashed border-stone-300 dark:border-stone-600 bg-stone-50 dark:bg-stone-800/50 p-6">
-        <p class="text-sm text-stone-500 dark:text-stone-400 m-0">
-            Placeholder — no chapters yet. Switch to <strong>Lecture</strong> for the empty lecture shell, or
-            <a href="/" class="text-indigo-600 dark:text-indigo-400 hover:underline font-medium">return to all courses</a>.
+<section id="home" class="chapter space-y-8">
+    <header>
+        <h2 class="text-4xl font-bold text-stone-900">AI Engineering</h2>
+        <p class="text-xl text-indigo-700 font-medium mt-1">From LLMs to Production-Grade Agentic Systems</p>
+        <p class="text-lg text-stone-600 mt-3">
+            An eight-week digital handbook for AlrightTech interns who already ship code and are ready to design,
+            evaluate, and deploy real AI applications — prompting, retrieval, agents, guardrails, and production ops.
         </p>
+        <div class="mt-4 flex flex-wrap gap-3 text-sm text-stone-600">
+            <span class="bg-indigo-50 px-3 py-1 rounded-full"><strong>Program:</strong> AlrightTech Intern Engineering</span>
+            <span class="bg-purple-50 px-3 py-1 rounded-full"><strong>Format:</strong> Ebook + Labs + Mini Projects</span>
+            <span class="bg-blue-50 px-3 py-1 rounded-full"><strong>Level:</strong> Intermediate · Python-first</span>
+            <span class="bg-emerald-50 px-3 py-1 rounded-full"><strong>Edition:</strong> 2025–2026 · v1.0</span>
+        </div>
+    </header>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">About Your Trainer</h3>
+        <p class="text-lg font-semibold">Mr. Haseeb</p>
+        <p class="text-stone-700">COO at AlrightTech · Full Stack AI Engineer</p>
+        <p class="text-stone-600 mt-2 text-sm">
+            This track continues beyond <em>Prompt to Production</em>. You will build the same primitives production AI teams use:
+            multi-provider LLM calls, versioned prompts, structured outputs, RAG, agents, evaluation, and deployment.
+        </p>
+        <div class="flex space-x-4 mt-3">
+            <a href="https://mrhaseeb.com" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">mrhaseeb.com</a>
+            <a href="https://www.linkedin.com/in/mrmuhammadhaseeb/" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">LinkedIn</a>
+        </div>
     </div>
-</div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-2">Who This Course Is For</h3>
+        <ul class="list-disc pl-5 text-stone-700 space-y-2">
+            <li>Developers, CS students, and graduates comfortable in Python who want to build AI products</li>
+            <li>Backend and full-stack engineers moving into AI engineering</li>
+            <li>AlrightTech interns continuing after the Prompt to Production foundation track</li>
+            <li><strong>Not</strong> a deep ML-theory or model-training course — no heavy mathematics required</li>
+        </ul>
+        <h4 class="font-semibold text-stone-800 mt-6 mb-2">Prerequisites</h4>
+        <ul class="list-disc pl-5 text-stone-700 space-y-1 text-sm">
+            <li>Python (functions, classes, async basics)</li>
+            <li>Git/GitHub and the command line</li>
+            <li>REST APIs and JSON</li>
+            <li>Basic HTTP and environment variables</li>
+        </ul>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-2">What You Will Be Able To Do</h3>
+        <ul class="list-disc pl-5 text-stone-700 space-y-2">
+            <li>Build production RAG systems over private data with citations and measured quality</li>
+            <li>Design tool-using and multi-agent systems with memory, planning, and orchestration</li>
+            <li>Enforce structured outputs and integrate LLMs with external tools and APIs</li>
+            <li>Evaluate LLM/agent quality with datasets, metrics, and LLM-as-judge — catch regressions in CI</li>
+            <li>Add guardrails and defend against prompt injection and related LLM security risks</li>
+            <li>Deploy AI services with tracing, monitoring, cost control, and reliability patterns</li>
+        </ul>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-2">How the Course Works</h3>
+        <p class="text-stone-700 mb-4">
+            Rhythm: <strong>concept → live demo → guided lab → independent mini project</strong>.
+            Roughly half of every module is hands-on building. Projects compound — each mini project feeds the next,
+            and all converge into the Week 8 capstone.
+        </p>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+            <div class="bg-indigo-50 border border-indigo-100 p-4 rounded-lg">
+                <p class="font-semibold text-indigo-900">Provider-aware</p>
+                <p class="text-indigo-700 mt-1">Claude, GPT, Gemini, and open models — not one-vendor lock-in.</p>
+            </div>
+            <div class="bg-purple-50 border border-purple-100 p-4 rounded-lg">
+                <p class="font-semibold text-purple-900">Ship most days</p>
+                <p class="text-purple-700 mt-1">Five days/week for eight weeks; working code is the default.</p>
+            </div>
+            <div class="bg-emerald-50 border border-emerald-100 p-4 rounded-lg">
+                <p class="font-semibold text-emerald-900">Assessed on delivery</p>
+                <p class="text-emerald-700 mt-1">Labs pass/fail; projects rubric-graded; capstone demo defense.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-2">Part I — Foundations (Available Now)</h3>
+        <p class="text-stone-700 mb-4">
+            Build a rock-solid mental model of how LLMs work and learn to control them precisely.
+            By the end of Part I you can call any model, engineer reliable prompts, and force structured,
+            tool-connected outputs — the primitives every later module depends on.
+        </p>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <a href="#m1" class="block bg-indigo-50 p-4 rounded-lg border border-indigo-100 hover:border-indigo-300 transition">
+                <p class="text-xs font-bold text-indigo-500 mb-1">MODULE 1 · 3 DAYS</p>
+                <h4 class="font-semibold text-indigo-800">LLM &amp; AI Engineering Foundations</h4>
+                <p class="text-sm text-indigo-600 mt-1">Tokens, decoding, providers, env setup → Model Benchmark CLI</p>
+            </a>
+            <a href="#m2" class="block bg-purple-50 p-4 rounded-lg border border-purple-100 hover:border-purple-300 transition">
+                <p class="text-xs font-bold text-purple-500 mb-1">MODULE 2 · 3 DAYS</p>
+                <h4 class="font-semibold text-purple-800">Prompt Engineering for Engineers</h4>
+                <p class="text-sm text-purple-600 mt-1">Six-part framework, CoT, robustness → Prompt Toolkit</p>
+            </a>
+            <a href="#m3" class="block bg-blue-50 p-4 rounded-lg border border-blue-100 hover:border-blue-300 transition">
+                <p class="text-xs font-bold text-blue-500 mb-1">MODULE 3 · 2 DAYS</p>
+                <h4 class="font-semibold text-blue-800">Structured Outputs &amp; Tool Calling</h4>
+                <p class="text-sm text-blue-600 mt-1">JSON Schema, Pydantic, tool loops → Extraction Service</p>
+            </a>
+        </div>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-6">Full Curriculum Map</h3>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Part</th>
+                        <th class="border border-stone-200 p-2">#</th>
+                        <th class="border border-stone-200 p-2">Module</th>
+                        <th class="border border-stone-200 p-2">Duration</th>
+                        <th class="border border-stone-200 p-2">Mini Project</th>
+                        <th class="border border-stone-200 p-2">Status</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium" rowspan="3">Part I — Foundations</td>
+                        <td class="border border-stone-200 p-2">M1</td>
+                        <td class="border border-stone-200 p-2"><a href="#m1" class="text-indigo-600 hover:underline">LLM &amp; AI Engineering Foundations</a></td>
+                        <td class="border border-stone-200 p-2">3 days</td>
+                        <td class="border border-stone-200 p-2">Model Benchmark CLI</td>
+                        <td class="border border-stone-200 p-2 text-emerald-700 font-medium">Live</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2">M2</td>
+                        <td class="border border-stone-200 p-2"><a href="#m2" class="text-indigo-600 hover:underline">Prompt Engineering for Engineers</a></td>
+                        <td class="border border-stone-200 p-2">3 days</td>
+                        <td class="border border-stone-200 p-2">Prompt-Powered Text Toolkit</td>
+                        <td class="border border-stone-200 p-2 text-emerald-700 font-medium">Live</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2">M3</td>
+                        <td class="border border-stone-200 p-2"><a href="#m3" class="text-indigo-600 hover:underline">Structured Outputs, Function &amp; Tool Calling</a></td>
+                        <td class="border border-stone-200 p-2">2 days</td>
+                        <td class="border border-stone-200 p-2">Structured Data Extraction Service</td>
+                        <td class="border border-stone-200 p-2 text-emerald-700 font-medium">Live</td>
+                    </tr>
+                    <tr class="bg-stone-50">
+                        <td class="border border-stone-200 p-2 font-medium" rowspan="4">Part II — Knowledge &amp; Retrieval</td>
+                        <td class="border border-stone-200 p-2">M4</td>
+                        <td class="border border-stone-200 p-2">Embeddings &amp; Semantic Search</td>
+                        <td class="border border-stone-200 p-2">2 days</td>
+                        <td class="border border-stone-200 p-2">Semantic Search Engine</td>
+                        <td class="border border-stone-200 p-2 text-stone-400">Coming soon</td>
+                    </tr>
+                    <tr class="bg-stone-50">
+                        <td class="border border-stone-200 p-2">M5</td>
+                        <td class="border border-stone-200 p-2">Vector Databases</td>
+                        <td class="border border-stone-200 p-2">2 days</td>
+                        <td class="border border-stone-200 p-2">Production Vector Store Layer</td>
+                        <td class="border border-stone-200 p-2 text-stone-400">Coming soon</td>
+                    </tr>
+                    <tr class="bg-stone-50">
+                        <td class="border border-stone-200 p-2">M6</td>
+                        <td class="border border-stone-200 p-2">Retrieval-Augmented Generation (RAG)</td>
+                        <td class="border border-stone-200 p-2">3 days</td>
+                        <td class="border border-stone-200 p-2">Chat With Your Docs</td>
+                        <td class="border border-stone-200 p-2 text-stone-400">Coming soon</td>
+                    </tr>
+                    <tr class="bg-stone-50">
+                        <td class="border border-stone-200 p-2">M7</td>
+                        <td class="border border-stone-200 p-2">Advanced RAG &amp; Retrieval Optimization</td>
+                        <td class="border border-stone-200 p-2">3 days</td>
+                        <td class="border border-stone-200 p-2">Advanced RAG Upgrade</td>
+                        <td class="border border-stone-200 p-2 text-stone-400">Coming soon</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium" rowspan="4">Part III — Agentic AI</td>
+                        <td class="border border-stone-200 p-2">M8</td>
+                        <td class="border border-stone-200 p-2">AI Agents — Fundamentals</td>
+                        <td class="border border-stone-200 p-2">3 days</td>
+                        <td class="border border-stone-200 p-2">Research Assistant Agent</td>
+                        <td class="border border-stone-200 p-2 text-stone-400">Coming soon</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2">M9</td>
+                        <td class="border border-stone-200 p-2">Agent Memory &amp; Planning</td>
+                        <td class="border border-stone-200 p-2">2 days</td>
+                        <td class="border border-stone-200 p-2">Personal Assistant with Memory</td>
+                        <td class="border border-stone-200 p-2 text-stone-400">Coming soon</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2">M10</td>
+                        <td class="border border-stone-200 p-2">Agent Orchestration &amp; Frameworks</td>
+                        <td class="border border-stone-200 p-2">2 days</td>
+                        <td class="border border-stone-200 p-2">Orchestrated Workflow Agent</td>
+                        <td class="border border-stone-200 p-2 text-stone-400">Coming soon</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2">M11</td>
+                        <td class="border border-stone-200 p-2">Multi-Agent Systems</td>
+                        <td class="border border-stone-200 p-2">3 days</td>
+                        <td class="border border-stone-200 p-2">Multi-Agent Research Pipeline</td>
+                        <td class="border border-stone-200 p-2 text-stone-400">Coming soon</td>
+                    </tr>
+                    <tr class="bg-stone-50">
+                        <td class="border border-stone-200 p-2 font-medium" rowspan="3">Part IV — Production AI</td>
+                        <td class="border border-stone-200 p-2">M12</td>
+                        <td class="border border-stone-200 p-2">LLM &amp; Agent Evaluation</td>
+                        <td class="border border-stone-200 p-2">2 days</td>
+                        <td class="border border-stone-200 p-2">Evaluation Harness</td>
+                        <td class="border border-stone-200 p-2 text-stone-400">Coming soon</td>
+                    </tr>
+                    <tr class="bg-stone-50">
+                        <td class="border border-stone-200 p-2">M13</td>
+                        <td class="border border-stone-200 p-2">Guardrails, Safety &amp; Security</td>
+                        <td class="border border-stone-200 p-2">2 days</td>
+                        <td class="border border-stone-200 p-2">Hardened AI Endpoint</td>
+                        <td class="border border-stone-200 p-2 text-stone-400">Coming soon</td>
+                    </tr>
+                    <tr class="bg-stone-50">
+                        <td class="border border-stone-200 p-2">M14</td>
+                        <td class="border border-stone-200 p-2">Deployment, Observability &amp; Best Practices</td>
+                        <td class="border border-stone-200 p-2">3 days</td>
+                        <td class="border border-stone-200 p-2">Production Deployment</td>
+                        <td class="border border-stone-200 p-2 text-stone-400">Coming soon</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <p class="text-sm text-stone-500 mt-4">Week 8 is the capstone: design, build, evaluate, harden, deploy, and demo a production-grade AI application.</p>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">Recommended Weekly Cadence (Part I)</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+            <div class="border border-stone-200 rounded-lg p-4">
+                <p class="font-semibold text-stone-800">Week 1</p>
+                <p class="text-stone-600 mt-1">M1 → start of M2. Deliverable: <strong>Model Benchmark CLI</strong>.</p>
+            </div>
+            <div class="border border-stone-200 rounded-lg p-4">
+                <p class="font-semibold text-stone-800">Week 2 (Part I finish)</p>
+                <p class="text-stone-600 mt-1">Finish M2 → M3. Deliverable: <strong>Structured Data Extraction Service</strong>.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-indigo-50 border border-indigo-100 p-6 rounded-lg">
+        <h3 class="text-xl font-semibold text-indigo-900 mb-2">Start here</h3>
+        <p class="text-indigo-800 mb-4">Open Module 1 and set up your AI engineering environment before you touch advanced prompting.</p>
+        <a href="#m1" class="inline-block bg-indigo-600 text-white font-medium px-4 py-2 rounded-md hover:bg-indigo-700">Begin M1 — LLM Foundations →</a>
+    </div>
+</section>

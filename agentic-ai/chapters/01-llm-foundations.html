@@ -1,0 +1,394 @@
+<section id="m1" class="chapter space-y-8">
+    <header>
+        <p class="text-sm font-semibold uppercase tracking-wide text-indigo-600 mb-2">Part I — Foundations · Module 1 · 3 days</p>
+        <h2 class="text-4xl font-bold text-stone-900">M1: LLM &amp; AI Engineering Foundations</h2>
+        <p class="text-lg text-stone-600 mt-2">
+            Before you prompt, retrieve, or agentic-loop anything, you need a working engineer’s model of how LLMs generate text,
+            what tokens and context windows actually cost you, how decoding parameters change behavior, and how to call multiple
+            providers from a professional Python environment. This module is the foundation every later chapter rests on.
+        </p>
+        <div class="mt-4 bg-indigo-50 border border-indigo-100 rounded-lg p-4">
+            <p class="text-sm font-semibold text-indigo-900 mb-2">Learning objectives</p>
+            <ul class="list-disc pl-5 text-sm text-indigo-800 space-y-1">
+                <li>Explain how LLMs generate text — tokens, next-token prediction, and attention — at an engineering level</li>
+                <li>Reason about tokenization and context windows and their impact on cost, latency, and quality</li>
+                <li>Control behavior with temperature, top-p, max tokens, stop sequences, and seed</li>
+                <li>Compare frontier vs open-weight models and pick by cost / latency / capability</li>
+                <li>Set up a reproducible AI engineering environment and call multiple LLM providers reliably</li>
+            </ul>
+        </div>
+    </header>
+
+    <!-- 1. Role & stack -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">1.1 The AI Engineer Role</h3>
+        <p class="text-stone-700 mb-4">
+            An <strong>AI engineer</strong> ships applications that use models as components — APIs, retrieval layers, agents, evaluation, and ops —
+            not research papers. Contrast with neighboring roles:
+        </p>
+        <div class="overflow-x-auto mb-4">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Role</th>
+                        <th class="border border-stone-200 p-2">Primary job</th>
+                        <th class="border border-stone-200 p-2">Typical output</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">ML engineer / researcher</td>
+                        <td class="border border-stone-200 p-2">Train / fine-tune / evaluate models</td>
+                        <td class="border border-stone-200 p-2">Checkpoints, papers, training pipelines</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Data scientist</td>
+                        <td class="border border-stone-200 p-2">Analyze data, build predictive models</td>
+                        <td class="border border-stone-200 p-2">Insights, notebooks, classical ML models</td>
+                    </tr>
+                    <tr class="bg-indigo-50">
+                        <td class="border border-stone-200 p-2 font-medium">AI engineer (you)</td>
+                        <td class="border border-stone-200 p-2">Integrate LLMs into products with quality gates</td>
+                        <td class="border border-stone-200 p-2">Services, agents, RAG apps, eval harnesses</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <h4 class="font-semibold text-stone-800 mb-2">Modern GenAI application stack</h4>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
+            <div class="bg-stone-50 border border-stone-200 p-3 rounded-lg"><strong>Client / API</strong><br><span class="text-stone-600">FastAPI, Next.js, webhooks</span></div>
+            <div class="bg-stone-50 border border-stone-200 p-3 rounded-lg"><strong>Orchestration</strong><br><span class="text-stone-600">Prompts, tools, agents, workflows</span></div>
+            <div class="bg-stone-50 border border-stone-200 p-3 rounded-lg"><strong>Models</strong><br><span class="text-stone-600">Hosted APIs + optional local inference</span></div>
+            <div class="bg-stone-50 border border-stone-200 p-3 rounded-lg"><strong>Knowledge</strong><br><span class="text-stone-600">Embeddings, vector DBs, documents (Part II)</span></div>
+            <div class="bg-stone-50 border border-stone-200 p-3 rounded-lg"><strong>Quality &amp; safety</strong><br><span class="text-stone-600">Evals, guardrails, moderation (Part IV)</span></div>
+            <div class="bg-stone-50 border border-stone-200 p-3 rounded-lg"><strong>Ops</strong><br><span class="text-stone-600">Tracing, cost, rate limits, deploy</span></div>
+        </div>
+        <p class="text-sm text-stone-500 mt-3">Part I locks the bottom-middle: calling models + controlling text. Parts II–IV add knowledge, agency, and production.</p>
+    </div>
+
+    <!-- 2. Lifecycle -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">1.2 How Models Are Made (Engineer’s View)</h3>
+        <p class="text-stone-700 mb-4">You will almost never train from scratch. You <em>will</em> choose among model types shaped by this lifecycle:</p>
+        <ol class="list-decimal pl-5 text-stone-700 space-y-3 mb-4">
+            <li><strong>Pretraining</strong> — predict the next token on enormous corpora. Produces a <em>base</em> model that continues text but does not reliably follow instructions.</li>
+            <li><strong>Supervised fine-tuning (SFT)</strong> — train on curated instruction–response pairs. Produces an <em>instruct</em> / chat model.</li>
+            <li><strong>Preference optimization (RLHF / RLAIF)</strong> — align outputs with human or AI preference signals. Improves helpfulness and reduces some failure modes.</li>
+            <li><strong>Reasoning / test-time compute models</strong> — models trained or prompted to spend more tokens “thinking” before answering (o-series style, extended thinking). Often replace manual chain-of-thought prompting for hard problems.</li>
+        </ol>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+            <div class="border-l-4 border-stone-400 pl-3">
+                <p class="font-semibold text-stone-800">Base</p>
+                <p class="text-stone-600">Completion engines. Useful for research / fine-tuning; awkward for apps.</p>
+            </div>
+            <div class="border-l-4 border-indigo-500 pl-3">
+                <p class="font-semibold text-stone-800">Instruct / chat</p>
+                <p class="text-stone-600">Default for APIs. Message roles, system prompts, tool calling.</p>
+            </div>
+            <div class="border-l-4 border-purple-500 pl-3">
+                <p class="font-semibold text-stone-800">Reasoning</p>
+                <p class="text-stone-600">Better on multi-step tasks; higher latency and cost per answer.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. Transformer intuition -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">1.3 Transformer Intuition (No Heavy Math)</h3>
+        <p class="text-stone-700 mb-4">
+            An LLM is a neural network that maps a sequence of tokens to a probability distribution over the <em>next</em> token.
+            Generation is a loop: sample (or greedily pick) one token, append it, repeat until a stop condition.
+        </p>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <div class="bg-indigo-50 p-4 rounded-lg border border-indigo-100">
+                <h4 class="font-bold text-indigo-900 mb-2">Embeddings</h4>
+                <p class="text-sm text-indigo-800">Tokens become vectors. Nearby vectors mean related usage in the training distribution — not “true meaning,” but useful geometry.</p>
+            </div>
+            <div class="bg-purple-50 p-4 rounded-lg border border-purple-100">
+                <h4 class="font-bold text-purple-900 mb-2">Self-attention</h4>
+                <p class="text-sm text-purple-800">Each position looks at others in the context window to decide what matters for the next prediction. That is why long-range context works (until you hit the window or the middle gets “lost”).</p>
+            </div>
+            <div class="bg-emerald-50 p-4 rounded-lg border border-emerald-100">
+                <h4 class="font-bold text-emerald-900 mb-2">Next-token prediction</h4>
+                <p class="text-sm text-emerald-800">Everything — code, JSON, “reasoning” — is still token sampling. Structure and truth are not guaranteed; your prompts, tools, and evals make them reliable enough for products.</p>
+            </div>
+        </div>
+        <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-900">
+            <strong>Engineer’s takeaway:</strong> LLMs are <em>stochastic pattern completers</em> with enormous capacity.
+            Treat outputs as hypotheses to validate — never as ground truth — especially for citations, APIs, and security-sensitive decisions.
+        </div>
+    </div>
+
+    <!-- 4. Tokens -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">1.4 Tokenization, Context Windows &amp; Cost</h3>
+        <p class="text-stone-700 mb-4">
+            Models do not “see” characters or words. A tokenizer (commonly <strong>BPE</strong> — Byte Pair Encoding) splits text into tokens.
+            English averages roughly 4 characters per token; code and non-English often use more tokens for the same human-readable length.
+        </p>
+        <ul class="list-disc pl-5 text-stone-700 space-y-2 mb-4">
+            <li><strong>Prompt / input tokens</strong> — everything you send (system + history + user + tools).</li>
+            <li><strong>Completion / output tokens</strong> — everything the model generates (usually billed higher per token).</li>
+            <li><strong>Context window</strong> — max tokens of history the model can attend to in one call. Excess is truncated or rejected.</li>
+        </ul>
+        <p class="text-stone-700 mb-2">Rough cost mental model:</p>
+        <pre class="bg-stone-900 text-green-400 p-4 rounded-lg text-xs overflow-x-auto mb-4"><code>estimated_usd ≈ (input_tokens / 1e6) * input_price_per_1M
+              + (output_tokens / 1e6) * output_price_per_1M</code></pre>
+        <p class="text-sm text-stone-600 mb-4">
+            Always count tokens <em>before</em> shipping a hot path. A 50-page PDF stuffed into the prompt can cost more than a retrieval pipeline that pulls three relevant chunks.
+        </p>
+        <h4 class="font-semibold text-stone-800 mb-2">Tokenizer lab (tiktoken)</h4>
+        <pre class="bg-stone-900 text-green-400 p-4 rounded-lg text-xs overflow-x-auto"><code>import tiktoken
+
+enc = tiktoken.encoding_for_model("gpt-4o")  # or get_encoding("o200k_base")
+prompt = "Summarize this API design in 5 bullets."
+tokens = enc.encode(prompt)
+print(len(tokens), tokens[:20])
+
+# Pseudo-price example — replace with current provider rates
+INPUT_PER_1M = 2.50
+print(f"≈ ${len(tokens) / 1e6 * INPUT_PER_1M:.6f} input")</code></pre>
+        <p class="text-sm text-stone-500 mt-2">
+            Docs: <a href="https://github.com/openai/tiktoken" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">openai/tiktoken</a>.
+            Note: Anthropic and Google use different tokenizers — count with <em>their</em> tooling when estimating those bills.
+        </p>
+    </div>
+
+    <!-- 5. Decoding -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">1.5 Inference / Decoding Parameters</h3>
+        <p class="text-stone-700 mb-4">These knobs do not “make the model smarter.” They change the sampling distribution over next tokens.</p>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Parameter</th>
+                        <th class="border border-stone-200 p-2">What it does</th>
+                        <th class="border border-stone-200 p-2">When to use</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-mono text-xs">temperature</td>
+                        <td class="border border-stone-200 p-2">Scales logits before sampling. Low → peaked; high → flat / creative.</td>
+                        <td class="border border-stone-200 p-2">0–0.3 extraction/code; 0.7–1.0 brainstorming</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-mono text-xs">top_p</td>
+                        <td class="border border-stone-200 p-2">Nucleus sampling: only sample from the smallest set of tokens whose cumulative probability ≥ p.</td>
+                        <td class="border border-stone-200 p-2">Often leave default; avoid stacking wild temp + wild top_p</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-mono text-xs">top_k</td>
+                        <td class="border border-stone-200 p-2">Restrict to k most likely tokens (provider-dependent).</td>
+                        <td class="border border-stone-200 p-2">Less common on OpenAI-style APIs</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-mono text-xs">max_tokens</td>
+                        <td class="border border-stone-200 p-2">Hard cap on completion length.</td>
+                        <td class="border border-stone-200 p-2">Always set for cost control</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-mono text-xs">stop</td>
+                        <td class="border border-stone-200 p-2">Stop sequences that end generation early.</td>
+                        <td class="border border-stone-200 p-2">Enforcing delimiters / ending a format</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-mono text-xs">seed</td>
+                        <td class="border border-stone-200 p-2">Best-effort reproducibility (not guaranteed across providers/versions).</td>
+                        <td class="border border-stone-200 p-2">Eval suites, demos</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-mono text-xs">frequency / presence penalty</td>
+                        <td class="border border-stone-200 p-2">Discourage repetition (OpenAI-style).</td>
+                        <td class="border border-stone-200 p-2">Long creative text; rarely for JSON</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <p class="text-sm text-stone-600 mt-4">
+            <strong>Determinism myth:</strong> Even temperature 0 can vary across GPUs, batching, or model version upgrades.
+            For production evals, freeze model IDs, versions, and seeds — and still expect occasional drift.
+        </p>
+    </div>
+
+    <!-- 6. Landscape -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">1.6 Model Landscape (2025–2026)</h3>
+        <p class="text-stone-700 mb-4">Know families, not brand slogans. Prices and names change; selection criteria stay:</p>
+        <ul class="list-disc pl-5 text-stone-700 space-y-1 mb-4 text-sm">
+            <li><strong>Capability</strong> — reasoning, coding, long context, multimodal, tool use quality</li>
+            <li><strong>Latency</strong> — TTFT and tokens/sec for your UX</li>
+            <li><strong>Cost</strong> — input vs output pricing; caching; batch APIs</li>
+            <li><strong>Operational fit</strong> — data residency, rate limits, structured outputs / tools support</li>
+        </ul>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+            <div class="bg-stone-50 border border-stone-200 p-4 rounded-lg">
+                <h4 class="font-semibold text-stone-900">Frontier hosted</h4>
+                <ul class="mt-2 space-y-1 text-stone-700">
+                    <li><strong>Anthropic Claude</strong> — Opus / Sonnet / Haiku tiers · <a href="https://docs.anthropic.com/" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">docs</a></li>
+                    <li><strong>OpenAI GPT &amp; o-series</strong> · <a href="https://platform.openai.com/docs" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">docs</a></li>
+                    <li><strong>Google Gemini</strong> · <a href="https://ai.google.dev/docs" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">docs</a></li>
+                </ul>
+            </div>
+            <div class="bg-stone-50 border border-stone-200 p-4 rounded-lg">
+                <h4 class="font-semibold text-stone-900">Open-weight / local-friendly</h4>
+                <ul class="mt-2 space-y-1 text-stone-700">
+                    <li>Llama, Qwen, Mistral, DeepSeek families</li>
+                    <li>Run via <a href="https://ollama.com/" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">Ollama</a>, <a href="https://lmstudio.ai/" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">LM Studio</a>, or <a href="https://docs.vllm.ai/" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">vLLM</a></li>
+                    <li>Great for offline, privacy, and cost at scale — quality varies by size</li>
+                </ul>
+            </div>
+        </div>
+        <p class="text-sm text-stone-600 mt-4">
+            <strong>Multimodal</strong> models accept images (and sometimes audio/video). <strong>Reasoning</strong> models trade speed/cost for harder problem performance.
+            Default course posture: prototype on a mid-tier frontier model; measure; then decide to upgrade, downgrade, or go local.
+        </p>
+    </div>
+
+    <!-- 7. Hosted vs local -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">1.7 Hosted APIs vs Local Inference</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mb-4">
+            <div class="border border-stone-200 rounded-lg p-4">
+                <h4 class="font-semibold text-stone-800 mb-2">Hosted APIs</h4>
+                <ul class="list-disc pl-5 text-stone-700 space-y-1">
+                    <li>Fastest path to quality; operational burden on vendor</li>
+                    <li>Pay per token; watch rate limits (RPM / TPM)</li>
+                    <li>Data leaves your laptop — review vendor retention policies</li>
+                </ul>
+            </div>
+            <div class="border border-stone-200 rounded-lg p-4">
+                <h4 class="font-semibold text-stone-800 mb-2">Local / self-hosted</h4>
+                <ul class="list-disc pl-5 text-stone-700 space-y-1">
+                    <li>Privacy and predictable unit cost after GPUs</li>
+                    <li>You own serving, quantization, and scaling (vLLM)</li>
+                    <li>Quality and tool/JSON reliability may lag frontier APIs</li>
+                </ul>
+            </div>
+        </div>
+        <p class="text-stone-700 text-sm">
+            Production systems often mix: frontier for hard reasoning / customer-facing quality; local or small models for classification, routing, or high-volume cheap tasks.
+        </p>
+    </div>
+
+    <!-- 8. Environment -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">1.8 Professional Environment Setup</h3>
+        <p class="text-stone-700 mb-3">Minimum bar for this course:</p>
+        <ul class="list-disc pl-5 text-stone-700 space-y-1 mb-4 text-sm">
+            <li>Python <strong>3.11+</strong></li>
+            <li>Dependency isolation with <a href="https://docs.astral.sh/uv/" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">uv</a> (preferred) or venv</li>
+            <li>Secrets in <code class="bg-stone-100 px-1 rounded">.env</code> — never committed; load with <code class="bg-stone-100 px-1 rounded">python-dotenv</code></li>
+            <li>Official SDKs: <code class="bg-stone-100 px-1 rounded">openai</code>, <code class="bg-stone-100 px-1 rounded">anthropic</code>, <code class="bg-stone-100 px-1 rounded">google-genai</code> (or google-generativeai)</li>
+            <li>Basic cost logging: model, tokens in/out, latency ms, estimated USD</li>
+        </ul>
+        <pre class="bg-stone-900 text-green-400 p-4 rounded-lg text-xs overflow-x-auto mb-3"><code># .env (example — do not commit)
+OPENAI_API_KEY=sk-...
+ANTHROPIC_API_KEY=sk-ant-...
+GOOGLE_API_KEY=...
+
+# uv quickstart
+# uv init aai-lab && cd aai-lab
+# uv add openai anthropic google-genai python-dotenv tiktoken httpx</code></pre>
+        <pre class="bg-stone-900 text-green-400 p-4 rounded-lg text-xs overflow-x-auto"><code>import os, time
+from dotenv import load_dotenv
+from openai import OpenAI
+
+load_dotenv()
+client = OpenAI()  # reads OPENAI_API_KEY
+
+t0 = time.perf_counter()
+resp = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[{"role": "user", "content": "Reply with exactly: pong"}],
+    max_tokens=16,
+    temperature=0,
+)
+latency_ms = (time.perf_counter() - t0) * 1000
+usage = resp.usage
+print(resp.choices[0].message.content)
+print(f"{latency_ms:.0f}ms | in={usage.prompt_tokens} out={usage.completion_tokens}")</code></pre>
+    </div>
+
+    <!-- Labs -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">Hands-on Labs</h3>
+        <div class="space-y-4">
+            <div class="border border-stone-200 rounded-lg p-4">
+                <h4 class="font-semibold text-stone-800">Lab A — Reproducible project + secrets</h4>
+                <ol class="list-decimal pl-5 text-sm text-stone-700 mt-2 space-y-1">
+                    <li>Create a uv/venv project with a <code class="bg-stone-100 px-1 rounded">.gitignore</code> that excludes <code class="bg-stone-100 px-1 rounded">.env</code> and <code class="bg-stone-100 px-1 rounded">.venv</code>.</li>
+                    <li>Add OpenAI, Anthropic, and Gemini SDK deps.</li>
+                    <li>Prove each key loads without printing the secret to logs.</li>
+                </ol>
+                <p class="text-xs text-emerald-700 mt-2"><strong>Done when:</strong> three separate hello scripts (or one CLI with <code class="bg-stone-100 px-1 rounded">--provider</code>) succeed.</p>
+            </div>
+            <div class="border border-stone-200 rounded-lg p-4">
+                <h4 class="font-semibold text-stone-800">Lab B — Tokenizer cost estimator</h4>
+                <p class="text-sm text-stone-700 mt-2">Use tiktoken to count tokens for a short and a long prompt. Estimate USD with published per-1M rates. Record results in a Markdown table.</p>
+            </div>
+            <div class="border border-stone-200 rounded-lg p-4">
+                <h4 class="font-semibold text-stone-800">Lab C — Multi-provider hello world</h4>
+                <p class="text-sm text-stone-700 mt-2">Send the <em>same</em> prompt to three providers. Log output text, latency, and token usage (or best available). Note qualitative differences.</p>
+            </div>
+            <div class="border border-stone-200 rounded-lg p-4">
+                <h4 class="font-semibold text-stone-800">Lab D — Local vs frontier</h4>
+                <p class="text-sm text-stone-700 mt-2">Install Ollama, pull a small instruct model, and run the same task against a frontier API. Compare quality, latency, and cost.</p>
+            </div>
+            <div class="border border-stone-200 rounded-lg p-4">
+                <h4 class="font-semibold text-stone-800">Lab E — Sampling playground</h4>
+                <p class="text-sm text-stone-700 mt-2">Sweep temperature ∈ {0, 0.3, 0.7, 1.0} and top_p ∈ {0.5, 0.9, 1.0} (3 runs each where possible). Document which settings are usable for JSON vs creative prose.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mini project -->
+    <div class="bg-white p-6 rounded-lg shadow-md border-2 border-indigo-200">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-2">Mini Project — Model Benchmark CLI</h3>
+        <p class="text-stone-700 mb-4">
+            Build a Python CLI that runs a <strong>fixed task suite</strong> across several models and emits a comparison report.
+            You will reuse this repo for the rest of the course whenever you need to pick a model.
+        </p>
+        <h4 class="font-semibold text-stone-800 mb-2">Required tasks (minimum)</h4>
+        <ul class="list-disc pl-5 text-sm text-stone-700 space-y-1 mb-4">
+            <li><strong>Summarization</strong> — summarize a ~400-word article into 5 bullets</li>
+            <li><strong>Classification</strong> — label sentiment as positive / negative / neutral (strict labels)</li>
+            <li><strong>Code generation</strong> — implement a small pure function from a docstring; optionally run it</li>
+        </ul>
+        <h4 class="font-semibold text-stone-800 mb-2">Report fields</h4>
+        <ul class="list-disc pl-5 text-sm text-stone-700 space-y-1 mb-4">
+            <li>Model ID, provider, latency (ms), prompt tokens, completion tokens, estimated cost</li>
+            <li>Raw output (or truncated) + qualitative notes (rubric: correctness, format adherence, usefulness)</li>
+            <li>Export <strong>Markdown</strong> and <strong>CSV</strong></li>
+        </ul>
+        <h4 class="font-semibold text-stone-800 mb-2">Acceptance criteria</h4>
+        <ul class="space-y-2 text-sm text-stone-700 mb-4">
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> CLI entrypoint documented in README (<code class="bg-stone-100 px-1 rounded">uv run …</code> or equivalent)</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> At least <strong>2 providers</strong> (3 preferred) and configurable model list via YAML/JSON</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> Fixed prompts checked into the repo (no hidden manual editing during a run)</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> Markdown + CSV artifacts written under <code class="bg-stone-100 px-1 rounded">reports/</code></li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> Secrets only via env; sample <code class="bg-stone-100 px-1 rounded">.env.example</code> committed</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> One-page write-up: which model you would pick for each task and why</li>
+        </ul>
+        <p class="text-sm text-stone-500">Suggested layout: <code class="bg-stone-100 px-1 rounded">tasks/</code>, <code class="bg-stone-100 px-1 rounded">providers/</code>, <code class="bg-stone-100 px-1 rounded">reports/</code>, <code class="bg-stone-100 px-1 rounded">bench.py</code>.</p>
+    </div>
+
+    <!-- References -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">References &amp; Further Reading</h3>
+        <ul class="list-disc pl-5 text-sm text-stone-700 space-y-2">
+            <li><a href="https://platform.openai.com/docs/guides/text" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">OpenAI — Text generation guide</a></li>
+            <li><a href="https://docs.anthropic.com/en/docs/welcome" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">Anthropic — API documentation</a></li>
+            <li><a href="https://ai.google.dev/gemini-api/docs" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">Google AI — Gemini API docs</a></li>
+            <li><a href="https://github.com/openai/tiktoken" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">tiktoken</a> — OpenAI tokenizer</li>
+            <li><a href="https://docs.astral.sh/uv/" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">uv</a> — Python packaging</li>
+            <li><a href="https://ollama.com/" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">Ollama</a> · <a href="https://docs.vllm.ai/" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">vLLM</a></li>
+            <li><a href="https://arxiv.org/abs/1706.03762" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">Attention Is All You Need</a> (Transformer paper — skim, don’t drown)</li>
+            <li><a href="https://platform.openai.com/docs/guides/reasoning" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">OpenAI — Reasoning models</a></li>
+        </ul>
+        <p class="mt-6 text-sm">
+            <a href="#m2" class="text-indigo-600 font-medium hover:underline">Next: M2 — Prompt Engineering for Engineers →</a>
+        </p>
+    </div>
+</section>
