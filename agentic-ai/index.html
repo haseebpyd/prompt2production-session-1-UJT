@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agentic AI Engineer — AlrightTech Intern Program</title>
+    <script>
+    (function () {
+        var t = localStorage.getItem('p2p-theme');
+        var dark = t ? t === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (dark) document.documentElement.classList.add('dark');
+    })();
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>tailwind.config = { darkMode: 'class' };</script>
+    <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body class="bg-stone-50 text-stone-800 dark:bg-stone-900 dark:text-stone-100 view-ebook">
+
+<header class="app-header">
+    <div class="app-header-brand">
+        <button type="button" id="sidebar-toggle" class="sidebar-toggle-btn md:hidden" aria-expanded="false" aria-controls="ebook-nav" aria-label="Open menu">
+            <span class="sidebar-toggle-icon" aria-hidden="true">☰</span>
+        </button>
+        <a href="/" class="app-courses-link" title="All courses">Courses</a>
+        <span class="text-2xl" aria-hidden="true">◈</span>
+        <div>
+            <p class="app-header-title">Agentic AI Engineer</p>
+            <p class="app-header-subtitle">AlrightTech Intern Program</p>
+        </div>
+    </div>
+    <div class="app-header-actions">
+        <button type="button" id="theme-toggle" class="theme-toggle-btn" aria-label="Toggle dark mode" aria-pressed="false">Dark</button>
+        <div class="mode-toggle" role="group" aria-label="View mode">
+            <button type="button" id="mode-ebook" class="mode-toggle-btn active" data-mode="ebook" aria-pressed="true">Ebook</button>
+            <button type="button" id="mode-lecture" class="mode-toggle-btn" data-mode="lecture" aria-pressed="false">Lecture</button>
+        </div>
+    </div>
+</header>
+
+<div class="app-body flex flex-col md:flex-row min-h-screen">
+
+    <div id="sidebar-backdrop" class="sidebar-backdrop" aria-hidden="true"></div>
+
+    <nav id="ebook-nav" class="app-sidebar w-full md:w-64 bg-white dark:bg-stone-900 shadow-lg dark:shadow-stone-950/50 md:min-h-screen p-4 md:p-6 flex-shrink-0 md:sticky md:top-12 md:h-[calc(100vh-3rem)] md:overflow-y-auto border-r border-transparent dark:border-stone-800">
+        <ul class="space-y-1 text-sm">
+            <li><a href="#home" class="nav-link active block px-3 py-2 rounded-md" data-target="home">Home & Overview</a></li>
+            <li class="pt-3 pb-1 px-3 text-xs font-semibold text-stone-400 dark:text-stone-500 uppercase tracking-wide">Chapters</li>
+            <li><p class="px-3 py-2 text-stone-400 dark:text-stone-500 text-xs">Content coming soon</p></li>
+        </ul>
+    </nav>
+
+    <nav id="lecture-nav" class="app-sidebar w-full md:w-64 bg-white dark:bg-stone-900 shadow-lg dark:shadow-stone-950/50 md:min-h-screen p-4 md:p-6 flex-shrink-0 md:sticky md:top-12 md:h-[calc(100vh-3rem)] md:overflow-y-auto hidden border-r border-transparent dark:border-stone-800">
+        <p class="px-3 pb-2 text-xs font-semibold text-stone-400 dark:text-stone-500 uppercase tracking-wide">Lectures</p>
+        <ul class="space-y-1 text-sm">
+            <li><a href="#lecture-0" class="lecture-link active block px-3 py-2 rounded-md" data-lecture="lecture-0">Lecture 0 — Coming Soon</a></li>
+        </ul>
+    </nav>
+
+    <main id="chapter-container" class="flex-1 p-6 md:p-10 overflow-y-auto">
+        <div class="text-stone-500 dark:text-stone-400 py-12 text-center">Loading…</div>
+    </main>
+
+</div>
+
+<script src="assets/js/lectures.js"></script>
+<script src="assets/js/app.js"></script>
+</body>
+</html>

@@ -23,6 +23,32 @@
             gap: 0.5rem;
             min-width: 0;
         }
+        .app-courses-link {
+            flex-shrink: 0;
+            padding: 0.3rem 0.55rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #57534e;
+            text-decoration: none;
+            background: #f5f5f4;
+            border: 1px solid #e7e5e4;
+            border-radius: 0.375rem;
+        }
+        .app-courses-link:hover {
+            color: #312e81;
+            background: #eef2ff;
+            border-color: #c7d2fe;
+        }
+        html.dark .app-courses-link {
+            color: #d6d3d1;
+            background: #292524;
+            border-color: #44403c;
+        }
+        html.dark .app-courses-link:hover {
+            color: #e0e7ff;
+            background: #312e81;
+            border-color: #4f46e5;
+        }
         .app-header-title {
             font-size: 0.95rem;
             font-weight: 700;
