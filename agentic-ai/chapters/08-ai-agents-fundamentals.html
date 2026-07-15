@@ -1,0 +1,764 @@
+<section id="m8" class="chapter space-y-8">
+    <header>
+        <p class="text-sm font-semibold uppercase tracking-wide text-indigo-600 mb-2">Part III — Agentic AI · Module 8 · 3 days</p>
+        <h2 class="text-4xl font-bold text-stone-900">M8: AI Agents — Fundamentals</h2>
+        <p class="text-lg text-stone-600 mt-2">
+            A RAG call from Module 6 answers one question with one retrieval pass. A <strong>research request</strong> is different:
+            <em>&ldquo;Compare our SSO policy with industry best practices and cite both internal docs and recent public guidance.&rdquo;</em>
+            That requires deciding <em>which</em> tools to call, in <em>what order</em>, and when to stop — not a fixed pipeline.
+            Your job is not &ldquo;make it autonomous.&rdquo; Your job is a <strong>control loop with termination</strong>, validated tool contracts,
+            inspectable traces, and honest cost caps — before you trust LangGraph or any other framework to hide the wiring.
+        </p>
+        <div class="mt-4 bg-indigo-50 border border-indigo-100 rounded-lg p-4">
+            <p class="text-sm font-semibold text-indigo-900 mb-2">Learning objectives</p>
+            <ul class="list-disc pl-5 text-sm text-indigo-800 space-y-1">
+                <li>Define what an agent is and judge when it is warranted versus a fixed workflow or chain</li>
+                <li>Build a ReAct agent from scratch — LLM plus tool loop, <strong>no framework</strong></li>
+                <li>Wire three production tools: web search, calculator, and your M6/M7 RAG retriever over AlrightTech Internal Docs</li>
+                <li>Enforce max steps, cost budgets, tool-error recovery, and loop detection</li>
+                <li>Design system prompts and tool descriptions as interface contracts</li>
+            </ul>
+        </div>
+    </header>
+
+    <!-- Why this matters -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">Why This Matters in Production</h3>
+        <p class="text-stone-700 mb-4">
+            The production failure mode is familiar: an &ldquo;agent&rdquo; that loops forever on a malformed tool call, burns $40 in tokens before anyone notices,
+            and returns a confident synthesis with no citations. Before writing a loop, ask whether M6 RAG already meets the SLA — ingest → retrieve → generate
+            is faster, cheaper, and easier to eval. Do not wrap a solved pipeline in an agent &ldquo;for vibes.&rdquo;
+        </p>
+        <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-900">
+            <strong>Engineer&rsquo;s contract:</strong> hand-built ReAct loop, three tools with versioned descriptions, env-pinned budgets,
+            and trace JSON per request. No LangGraph in M8 — understand the wiring first.
+        </div>
+    </div>
+
+    <!-- Day 1 -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <p class="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-2">Day 1 — Agents, workflows, and the control loop</p>
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">8.1 Agents vs Workflows vs Chains</h3>
+        <p class="text-stone-700 mb-4 text-sm">
+            Autonomy increases left to right: <strong>Chain</strong> (single LLM call) → <strong>Fixed Workflow</strong> (deterministic DAG) →
+            <strong>Tool-Using Agent</strong> (LLM chooses actions) → <strong>Multi-Agent</strong> (M11, higher cost and risk).
+        </p>
+        <div class="overflow-x-auto mb-4">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Pattern</th>
+                        <th class="border border-stone-200 p-2">Control flow</th>
+                        <th class="border border-stone-200 p-2">Best for</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Chain</td>
+                        <td class="border border-stone-200 p-2">One prompt → one response</td>
+                        <td class="border border-stone-200 p-2">Classification, extraction, single RAG turn</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Workflow</td>
+                        <td class="border border-stone-200 p-2">Deterministic DAG: A → B → C</td>
+                        <td class="border border-stone-200 p-2">Ingest pipelines, fixed retrieve-then-generate</td>
+                    </tr>
+                    <tr class="bg-indigo-50">
+                        <td class="border border-stone-200 p-2 font-medium">Agent</td>
+                        <td class="border border-stone-200 p-2">LLM chooses next action until done</td>
+                        <td class="border border-stone-200 p-2">Open-ended research, multi-source synthesis</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Multi-agent</td>
+                        <td class="border border-stone-200 p-2">Several agents with roles</td>
+                        <td class="border border-stone-200 p-2">Pipelines too large for one loop (M11)</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm mb-4">
+            <div class="border-l-4 border-emerald-500 pl-3">
+                <p class="font-semibold text-stone-800">Use an agent when</p>
+                <p class="text-stone-600">The tool set and intermediate decisions cannot be fully enumerated at design time; the user goal spans multiple information sources; you need the model to <em>decide</em> whether to search, calculate, or retrieve.</p>
+            </div>
+            <div class="border-l-4 border-red-400 pl-3">
+                <p class="font-semibold text-stone-800">Skip an agent when</p>
+                <p class="text-stone-600">M6 RAG already meets the SLA — ingest → retrieve → generate is faster, cheaper, and easier to eval.</p>
+            </div>
+        </div>
+        <p class="text-stone-700 text-sm">
+            <strong>AlrightTech example:</strong> &ldquo;What is our PTO accrual policy?&rdquo; → M6 retriever, no agent.
+            &ldquo;Summarize our PTO policy and compare it to California labor guidance published this year&rdquo; → agent with retriever + search tools.
+        </p>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">8.2 The Agent Control Loop</h3>
+        <p class="text-stone-700 mb-4 text-sm">
+            Every agent — framework or hand-built — implements the same cycle:
+            <strong>Perceive</strong> → <strong>Reason</strong> → <strong>Act</strong> → <strong>Observe</strong> → check <strong>Done or Budget?</strong>
+            → continue or stop with final answer.
+        </p>
+        <div class="overflow-x-auto mb-4">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Phase</th>
+                        <th class="border border-stone-200 p-2">Responsibility</th>
+                        <th class="border border-stone-200 p-2">Owned artifacts</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Perceive</td>
+                        <td class="border border-stone-200 p-2">Assemble messages: system contract, history, prior observations</td>
+                        <td class="border border-stone-200 p-2">Prompt version, trace log</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Reason</td>
+                        <td class="border border-stone-200 p-2">LLM emits thought + chosen action (ReAct) or structured tool call</td>
+                        <td class="border border-stone-200 p-2">Model, temperature</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Act</td>
+                        <td class="border border-stone-200 p-2">Execute tool with validated args</td>
+                        <td class="border border-stone-200 p-2">Tool registry, timeouts</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Observe</td>
+                        <td class="border border-stone-200 p-2">Append tool result to scratchpad</td>
+                        <td class="border border-stone-200 p-2">Observation formatter</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Terminate</td>
+                        <td class="border border-stone-200 p-2">Max steps, cost cap, loop detection, or explicit FINISH</td>
+                        <td class="border border-stone-200 p-2">Budget config</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">8.3 When NOT to Use an Agent</h3>
+        <p class="text-stone-700 mb-4 text-sm">Before writing a loop, ask:</p>
+        <ol class="list-decimal pl-5 text-stone-700 space-y-2 mb-4 text-sm">
+            <li>Can I draw the flowchart without an &ldquo;LLM decides&rdquo; diamond? → <strong>Workflow.</strong></li>
+            <li>Is there exactly one retrieval + one generation? → <strong>RAG (M6).</strong></li>
+            <li>Will non-determinism block compliance or audit? → <strong>Workflow with HITL (M10).</strong></li>
+            <li>Does the task need 3+ heterogeneous tools with unknown order? → <strong>Agent.</strong></li>
+        </ol>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">8.4 Minimal State Model (Pydantic)</h3>
+        <p class="text-stone-700 mb-3 text-sm">Pin budgets in environment variables. Never hard-code production limits in source.</p>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm"><code>from __future__ import annotations
+
+import os
+from enum import Enum
+from typing import Any
+
+from pydantic import BaseModel, Field
+
+
+class StepKind(str, Enum):
+    THOUGHT = "thought"
+    ACTION = "action"
+    OBSERVATION = "observation"
+    FINAL = "final"
+
+
+class AgentStep(BaseModel):
+    kind: StepKind
+    content: str
+    tool_name: str | None = None
+    tool_input: dict[str, Any] | None = None
+
+
+class AgentState(BaseModel):
+    question: str
+    steps: list[AgentStep] = Field(default_factory=list)
+    total_cost_usd: float = 0.0
+    step_count: int = 0
+
+    def scratchpad(self) -&gt; str:
+        lines: list[str] = []
+        for s in self.steps:
+            if s.kind == StepKind.THOUGHT:
+                lines.append(f"Thought: {s.content}")
+            elif s.kind == StepKind.ACTION:
+                lines.append(f"Action: {s.tool_name}[{s.tool_input}]")
+            elif s.kind == StepKind.OBSERVATION:
+                lines.append(f"Observation: {s.content}")
+        return "\n".join(lines)
+
+
+MAX_STEPS = int(os.getenv("AGENT_MAX_STEPS", "8"))
+MAX_COST_USD = float(os.getenv("AGENT_MAX_COST_USD", "0.50"))</code></pre>
+    </div>
+
+    <!-- Day 2 -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <p class="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-2">Day 2 — ReAct from scratch and tool wiring</p>
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">8.5 The ReAct Pattern (Reason + Act)</h3>
+        <p class="text-stone-700 mb-4 text-sm">
+            ReAct interleaves <strong>reasoning traces</strong> with <strong>tool calls</strong>. The model writes what it is thinking, picks a tool,
+            reads the observation, and repeats.
+        </p>
+        <p class="text-stone-700 mb-2 text-sm"><strong>ReAct scratchpad contract (system prompt excerpt):</strong></p>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm"><code>You are the AlrightTech Research Assistant. Answer using tools when needed.
+
+Format each step EXACTLY as:
+Thought: &lt;your reasoning&gt;
+Action: &lt;tool_name&gt;[&lt;JSON arguments&gt;]
+
+When you have enough evidence, respond with:
+Final Answer: &lt;synthesis with inline citations&gt;
+
+Available tools:
+- search_web: {"query": "..."} — public web search
+- calculator: {"expression": "..."} — safe math eval
+- retriever: {"query": "..."} — AlrightTech Internal Docs (M6/M7 RAG)
+
+Rules:
+- Cite retriever hits as [chunk_id]. Cite web as [web: title].
+- If tools fail, explain and try an alternative once.
+- Never invent tool names or chunk_ids.</code></pre>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm mt-4">
+            <div class="border-l-4 border-emerald-500 pl-3">
+                <p class="font-semibold text-stone-800">Use text ReAct when</p>
+                <p class="text-stone-600">Learning the loop; providers without structured tool APIs; you need human-readable traces in logs.</p>
+            </div>
+            <div class="border-l-4 border-red-400 pl-3">
+                <p class="font-semibold text-stone-800">Skip text ReAct when</p>
+                <p class="text-stone-600">Production with OpenAI/Anthropic tool-use APIs — prefer validated JSON schema calls (M3) and map to the same loop.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">8.6 Tool Registry and the Retriever Bridge</h3>
+        <p class="text-stone-700 mb-4 text-sm">Your M6/M7 RAG pipeline becomes a <strong>tool</strong>, not the whole app:</p>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm"><code>from dataclasses import dataclass
+from typing import Callable, Protocol
+
+
+@dataclass
+class ToolResult:
+    ok: bool
+    output: str
+    metadata: dict | None = None
+
+
+class Tool(Protocol):
+    name: str
+    description: str
+
+    def run(self, **kwargs) -&gt; ToolResult: ...
+
+
+def make_retriever_tool(store, embed_fn, collection: str, top_k: int = 5) -&gt; Tool:
+    """Wrap M6/M7 RAG retrieval as an agent tool."""
+
+    class RetrieverTool:
+        name = "retriever"
+        description = (
+            "Search AlrightTech Internal Docs. Returns ranked chunks with chunk_id, "
+            "source path, and text. Use for policies, runbooks, onboarding."
+        )
+
+        def run(self, query: str) -&gt; ToolResult:
+            vec = embed_fn([query])[0]
+            hits = store.query(collection, vec, top_k=top_k)
+            if not hits:
+                return ToolResult(ok=True, output="No documents matched.", metadata={"hits": []})
+            blocks = [
+                f"[{h.chunk_id}] (source: {h.metadata.get('source')}, score: {h.score:.2f})\n{h.text}"
+                for h in hits
+            ]
+            return ToolResult(
+                ok=True,
+                output="\n\n".join(blocks),
+                metadata={"hits": [h.chunk_id for h in hits]},
+            )
+
+    return RetrieverTool()</code></pre>
+        <p class="text-stone-700 mb-3 text-sm mt-4">Register tools in a dict keyed by name. The agent loop resolves <code class="bg-stone-100 px-1 rounded">Action: retriever[{"query": "..."}]</code> to <code class="bg-stone-100 px-1 rounded">tools["retriever"].run(query=...)</code>.</p>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm"><code>def make_calculator_tool() -&gt; Tool:
+    import ast
+    import operator
+
+    OPS = {
+        ast.Add: operator.add,
+        ast.Sub: operator.sub,
+        ast.Mult: operator.mul,
+        ast.Div: operator.truediv,
+        ast.Pow: operator.pow,
+        ast.USub: operator.neg,
+    }
+
+    class CalculatorTool:
+        name = "calculator"
+        description = "Evaluate a numeric expression, e.g. '(100 * 0.15) + 42'."
+
+        def run(self, expression: str) -&gt; ToolResult:
+            try:
+                node = ast.parse(expression, mode="eval").body
+                value = _eval_ast(node, OPS)
+                return ToolResult(ok=True, output=str(value))
+            except Exception as exc:
+                return ToolResult(ok=False, output=f"Calculator error: {exc}")
+
+    return CalculatorTool()
+
+
+def make_search_tool(api_key: str | None = None) -&gt; Tool:
+    """Stub — swap for Tavily, SerpAPI, or internal search gateway."""
+
+    class SearchTool:
+        name = "search_web"
+        description = "Search the public web for recent articles and guidance."
+
+        def run(self, query: str) -&gt; ToolResult:
+            key = api_key or os.getenv("SEARCH_API_KEY")
+            if not key:
+                return ToolResult(ok=False, output="SEARCH_API_KEY not configured.")
+            return ToolResult(
+                ok=True,
+                output=f"[web: example] Stub result for query: {query}",
+                metadata={"query": query},
+            )
+
+    return SearchTool()</code></pre>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">8.7 ReAct Loop — No LangGraph</h3>
+        <p class="text-stone-700 mb-4 text-sm">This is the loop LangGraph will later encode as nodes and edges (M10). Understand it here first.</p>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm"><code>import json
+import re
+
+from openai import OpenAI
+
+ACTION_RE = re.compile(r"Action:\s*(\w+)\[(.*)\]", re.DOTALL)
+FINAL_RE = re.compile(r"Final Answer:\s*(.*)", re.DOTALL)
+
+
+def parse_model_output(text: str) -&gt; tuple[str | None, str | None, dict | None]:
+    if m := FINAL_RE.search(text):
+        return "final", m.group(1).strip(), None
+    if m := ACTION_RE.search(text):
+        tool_name = m.group(1)
+        raw_args = m.group(2).strip()
+        try:
+            args = json.loads(raw_args)
+        except json.JSONDecodeError:
+            args = {"query": raw_args.strip('"')}
+        return "action", tool_name, args
+    thought = text.split("Action:")[0].replace("Thought:", "").strip()
+    return "thought", thought, None
+
+
+def run_react_agent(
+    question: str,
+    tools: dict[str, Tool],
+    llm_client: OpenAI,
+    model: str = "gpt-4o-mini",
+) -&gt; AgentState:
+    state = AgentState(question=question)
+
+    while state.step_count &lt; MAX_STEPS and state.total_cost_usd &lt; MAX_COST_USD:
+        messages = [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {
+                "role": "user",
+                "content": f"Question: {question}\n\nScratchpad:\n{state.scratchpad()}",
+            },
+        ]
+        resp = llm_client.chat.completions.create(model=model, messages=messages, temperature=0)
+        text = resp.choices[0].message.content or ""
+        state.total_cost_usd += _estimate_cost(resp)
+        state.step_count += 1
+
+        kind, payload, args = parse_model_output(text)
+
+        if kind == "final":
+            state.steps.append(AgentStep(kind=StepKind.FINAL, content=payload or ""))
+            break
+        if kind == "thought":
+            state.steps.append(AgentStep(kind=StepKind.THOUGHT, content=payload or ""))
+            continue
+        if kind == "action":
+            tool_name = payload or ""
+            if tool_name not in tools:
+                obs = f"Unknown tool '{tool_name}'. Available: {list(tools.keys())}"
+            else:
+                try:
+                    result = tools[tool_name].run(**(args or {}))
+                    obs = result.output if result.ok else f"Tool error: {result.output}"
+                except Exception as exc:
+                    obs = f"Tool exception: {exc}"
+            state.steps.append(
+                AgentStep(kind=StepKind.ACTION, content="", tool_name=tool_name, tool_input=args)
+            )
+            state.steps.append(AgentStep(kind=StepKind.OBSERVATION, content=obs))
+
+        if _detect_loop(state):
+            state.steps.append(
+                AgentStep(kind=StepKind.FINAL, content="Stopped: repeated action loop detected.")
+            )
+            break
+    else:
+        state.steps.append(
+            AgentStep(kind=StepKind.FINAL, content="Stopped: step or cost budget exhausted.")
+        )
+    return state
+
+
+def _detect_loop(state: AgentState, window: int = 3) -&gt; bool:
+    actions = [
+        (s.tool_name, json.dumps(s.tool_input, sort_keys=True))
+        for s in state.steps
+        if s.kind == StepKind.ACTION
+    ]
+    if len(actions) &lt; window:
+        return False
+    return len(set(actions[-window:])) == 1</code></pre>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">8.8 Prompt Contracts: Tools as API Documentation</h3>
+        <p class="text-stone-700 mb-4 text-sm">Tool descriptions are not marketing copy. They are <strong>interface docs</strong> the model reads instead of OpenAPI.</p>
+        <div class="overflow-x-auto mb-4">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Field</th>
+                        <th class="border border-stone-200 p-2">Purpose</th>
+                        <th class="border border-stone-200 p-2">Example</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium"><code class="bg-stone-100 px-1 rounded">name</code></td>
+                        <td class="border border-stone-200 p-2">Stable identifier</td>
+                        <td class="border border-stone-200 p-2"><code class="bg-stone-100 px-1 rounded">retriever</code></td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium"><code class="bg-stone-100 px-1 rounded">description</code></td>
+                        <td class="border border-stone-200 p-2">When to use / not use</td>
+                        <td class="border border-stone-200 p-2">&ldquo;Internal AlrightTech docs only; not for public law&rdquo;</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Args schema</td>
+                        <td class="border border-stone-200 p-2">Types and constraints</td>
+                        <td class="border border-stone-200 p-2"><code class="bg-stone-100 px-1 rounded">query: str, max 200 chars</code></td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Error shape</td>
+                        <td class="border border-stone-200 p-2">What observation looks like on failure</td>
+                        <td class="border border-stone-200 p-2">&ldquo;No documents matched.&rdquo;</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <p class="text-sm text-stone-600">Version the system prompt (<code class="bg-stone-100 px-1 rounded">research-agent-v1</code>). When retrieval quality shifts after M7, update the retriever tool description — not the whole agent persona.</p>
+    </div>
+
+    <!-- Day 3 -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <p class="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-2">Day 3 — Guardrails, traces, and the mini project</p>
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">8.9 Guardrails Stack</h3>
+        <p class="text-stone-700 mb-4 text-sm">
+            Guardrails run on every loop iteration: check step count → check cost budget → detect repeated actions → validate tool name → execute with timeout → append trace.
+        </p>
+        <div class="overflow-x-auto mb-4">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Guardrail</th>
+                        <th class="border border-stone-200 p-2">Default (dev)</th>
+                        <th class="border border-stone-200 p-2">Production guidance</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Max steps</td>
+                        <td class="border border-stone-200 p-2">8</td>
+                        <td class="border border-stone-200 p-2">5–12 by task complexity</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Cost budget</td>
+                        <td class="border border-stone-200 p-2">$0.50</td>
+                        <td class="border border-stone-200 p-2">Per-request cap + daily org cap</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Loop detection</td>
+                        <td class="border border-stone-200 p-2">Same tool+args ×3</td>
+                        <td class="border border-stone-200 p-2">Hash (tool, canonical args)</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Tool timeout</td>
+                        <td class="border border-stone-200 p-2">10s</td>
+                        <td class="border border-stone-200 p-2">5–30s by dependency SLA</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Unknown tool</td>
+                        <td class="border border-stone-200 p-2">Observation error</td>
+                        <td class="border border-stone-200 p-2">Never crash the loop</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">8.10 Execution Traces (Non-Negotiable)</h3>
+        <p class="text-stone-700 mb-4 text-sm">Every agent response ships a trace. Store traces alongside M6 RAG traces. When leadership asks &ldquo;why did it say that?&rdquo;, you answer from the scratchpad — not from vibes.</p>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm"><code>{
+  "question": "Compare our SSO policy with current best practices",
+  "prompt_version": "research-agent-v1",
+  "steps": [
+    {"kind": "action", "tool": "retriever", "input": {"query": "SSO policy"}},
+    {"kind": "observation", "preview": "[onboarding/sso.md#c012] ..."},
+    {"kind": "action", "tool": "search_web", "input": {"query": "SSO best practices 2026"}},
+    {"kind": "final", "preview": "AlrightTech requires ... [onboarding/sso.md#c012]"}
+  ],
+  "step_count": 4,
+  "total_cost_usd": 0.08,
+  "stop_reason": "final_answer"
+}</code></pre>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">8.11 Failure Modes (Debug Playbook)</h3>
+        <div class="overflow-x-auto mb-4">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Failure</th>
+                        <th class="border border-stone-200 p-2">Symptom</th>
+                        <th class="border border-stone-200 p-2">Where to look</th>
+                        <th class="border border-stone-200 p-2">First fix</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Infinite loop</td>
+                        <td class="border border-stone-200 p-2">Same tool until budget</td>
+                        <td class="border border-stone-200 p-2">Trace action sequence</td>
+                        <td class="border border-stone-200 p-2">Loop detection; tighten prompt &ldquo;try at most once&rdquo;</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Hallucinated tool</td>
+                        <td class="border border-stone-200 p-2"><code class="bg-stone-100 px-1 rounded">Action: fetch_url[...]</code></td>
+                        <td class="border border-stone-200 p-2">Parser + registry</td>
+                        <td class="border border-stone-200 p-2">Return observation listing valid tools</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Wrong tool choice</td>
+                        <td class="border border-stone-200 p-2">Web search for internal policy</td>
+                        <td class="border border-stone-200 p-2">Tool descriptions</td>
+                        <td class="border border-stone-200 p-2">Clarify retriever vs search; add negative examples</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Retriever ignored</td>
+                        <td class="border border-stone-200 p-2">Generic answer, no chunk_ids</td>
+                        <td class="border border-stone-200 p-2">Trace missing retriever call</td>
+                        <td class="border border-stone-200 p-2">System rule: &ldquo;call retriever before citing internal policy&rdquo;</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Cost blow-up</td>
+                        <td class="border border-stone-200 p-2">$2+ per request</td>
+                        <td class="border border-stone-200 p-2"><code class="bg-stone-100 px-1 rounded">step_count</code>, long observations</td>
+                        <td class="border border-stone-200 p-2">Trim observation size; lower max steps</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Malformed Action line</td>
+                        <td class="border border-stone-200 p-2">Parser falls through to thought</td>
+                        <td class="border border-stone-200 p-2">Raw LLM output in trace</td>
+                        <td class="border border-stone-200 p-2">Few-shot ReAct examples; lower temperature</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <p class="text-sm text-stone-600"><strong>Debug order:</strong> trace → tool registry → retriever hits → prompt version → model change.</p>
+    </div>
+
+    <!-- Decision guide -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">Engineering Decision Guide</h3>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Decision</th>
+                        <th class="border border-stone-200 p-2">Guidance</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Agent vs RAG</td>
+                        <td class="border border-stone-200 p-2">Default to M6 RAG; add agent only when tool order is unknown</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">ReAct format</td>
+                        <td class="border border-stone-200 p-2">Text ReAct for learning; native tool calls for production</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Tool count</td>
+                        <td class="border border-stone-200 p-2">Start with 3; every new tool increases mispick rate</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Observations</td>
+                        <td class="border border-stone-200 p-2">Truncate to token budget (e.g. 2k chars); link full payload in trace</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Retriever</td>
+                        <td class="border border-stone-200 p-2">Reuse M6/M7 pipeline unchanged; agent adds routing, not new index</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Framework</td>
+                        <td class="border border-stone-200 p-2"><strong>No LangGraph in M8</strong> — hand-built loop only</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Ops failure modes -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">Failure Modes &amp; Diagnostics (Ops View)</h3>
+        <ol class="list-decimal pl-5 text-stone-700 space-y-3 text-sm">
+            <li><strong>Agent answers without calling retriever on doc questions</strong> — add explicit policy in system prompt; eval with golden &ldquo;must call retriever&rdquo; set.</li>
+            <li><strong>Steps exhausted before Final Answer</strong> — increase max steps slightly or improve tool latency; check for retry loops.</li>
+            <li><strong>Calculator or search stub in prod</strong> — env misconfig; fail fast at startup if <code class="bg-stone-100 px-1 rounded">SEARCH_API_KEY</code> missing when search enabled.</li>
+            <li><strong>Citations don&rsquo;t match retriever metadata</strong> — post-validate <code class="bg-stone-100 px-1 rounded">[chunk_id]</code> against last retriever observation (reuse M6 validator).</li>
+        </ol>
+    </div>
+
+    <!-- Labs -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">Hands-on Labs</h3>
+        <div class="space-y-4">
+            <div class="border border-stone-200 rounded-lg p-4">
+                <h4 class="font-semibold text-stone-800">Lab 8.1 — Minimal ReAct Loop</h4>
+                <ol class="list-decimal pl-5 text-sm text-stone-700 mt-2 space-y-1">
+                    <li>Implement <code class="bg-stone-100 px-1 rounded">AgentState</code>, parser, and loop without any framework.</li>
+                    <li>Single mock tool (<code class="bg-stone-100 px-1 rounded">echo</code>) that returns its input.</li>
+                    <li>Log every step to stdout and JSON file.</li>
+                </ol>
+                <p class="text-xs text-emerald-700 mt-2"><strong>Done when:</strong> loop terminates on <code class="bg-stone-100 px-1 rounded">Final Answer:</code> or max steps; trace JSON written per run.</p>
+            </div>
+            <div class="border border-stone-200 rounded-lg p-4">
+                <h4 class="font-semibold text-stone-800">Lab 8.2 — Three-Tool Agent</h4>
+                <ol class="list-decimal pl-5 text-sm text-stone-700 mt-2 space-y-1">
+                    <li>Wire <code class="bg-stone-100 px-1 rounded">search_web</code>, <code class="bg-stone-100 px-1 rounded">calculator</code>, and <code class="bg-stone-100 px-1 rounded">retriever</code> (AlrightTech Internal Docs via M5 store).</li>
+                    <li>Run five questions that require different tool combinations.</li>
+                    <li>Print scratchpad after each run.</li>
+                </ol>
+                <p class="text-xs text-emerald-700 mt-2"><strong>Done when:</strong> retriever returns real <code class="bg-stone-100 px-1 rounded">chunk_id</code>s from your M6 corpus; at least one question uses two distinct tools.</p>
+            </div>
+            <div class="border border-stone-200 rounded-lg p-4">
+                <h4 class="font-semibold text-stone-800">Lab 8.3 — Guardrails</h4>
+                <ol class="list-decimal pl-5 text-sm text-stone-700 mt-2 space-y-1">
+                    <li>Add max steps, cost estimate, and loop detection.</li>
+                    <li>Deliberately prompt a loop (e.g. &ldquo;keep searching until you find X&rdquo;).</li>
+                    <li>Confirm clean stop with reason in trace.</li>
+                </ol>
+                <p class="text-xs text-emerald-700 mt-2"><strong>Done when:</strong> loop detection fires with documented <code class="bg-stone-100 px-1 rounded">stop_reason</code>; no unhandled exceptions on unknown tool names.</p>
+            </div>
+            <div class="border border-stone-200 rounded-lg p-4">
+                <h4 class="font-semibold text-stone-800">Lab 8.4 — Retriever Tool Integration</h4>
+                <ol class="list-decimal pl-5 text-sm text-stone-700 mt-2 space-y-1">
+                    <li>Expose your M6/M7 RAG as <code class="bg-stone-100 px-1 rounded">make_retriever_tool(...)</code>.</li>
+                    <li>Ask an internal policy question; verify agent cites retrieved chunks.</li>
+                    <li>Ask an out-of-corpus question; agent should search or refuse — not invent policy.</li>
+                </ol>
+                <p class="text-xs text-emerald-700 mt-2"><strong>Done when:</strong> internal question trace shows retriever call before citations; no hallucinated AlrightTech <code class="bg-stone-100 px-1 rounded">chunk_id</code>s.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mini project -->
+    <div class="bg-white p-6 rounded-lg shadow-md border-2 border-indigo-200">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-2">Mini Project — Research Assistant Agent</h3>
+        <p class="text-stone-700 mb-4">
+            An agent that, given a research question, plans implicitly via ReAct (which tools, in what order), searches
+            <strong>AlrightTech Internal Docs</strong> (retriever) and the <strong>public web</strong> (search), uses <strong>calculator</strong> when numeric comparison is needed,
+            returns a <strong>cited synthesis</strong> with inline <code class="bg-stone-100 px-1 rounded">[chunk_id]</code> and <code class="bg-stone-100 px-1 rounded">[web: ...]</code> references,
+            and enforces <strong>step and cost limits</strong> with full <strong>execution traces</strong>.
+        </p>
+        <div class="flex flex-wrap items-center justify-center gap-2 text-center text-sm mb-4">
+            <div class="bg-indigo-50 px-3 py-2 rounded-lg border border-indigo-100 font-medium text-indigo-900">CLI or API</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-purple-50 px-3 py-2 rounded-lg border border-purple-100 font-medium text-purple-900">ReAct Agent (M8)</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-amber-50 px-3 py-2 rounded-lg border border-amber-100 font-medium text-amber-900">LLM + Tool Registry</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-100 font-medium text-emerald-900">Retriever / Search / Calc</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-indigo-50 px-3 py-2 rounded-lg border border-indigo-100 font-medium text-indigo-900">Trace Log JSON</div>
+        </div>
+        <h4 class="font-semibold text-stone-800 mb-2">Acceptance criteria</h4>
+        <ul class="space-y-2 text-sm text-stone-700 mb-4">
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> Hand-built ReAct loop — no LangGraph</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> Three tools registered with versioned descriptions</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> Retriever uses M5 <code class="bg-stone-100 px-1 rounded">VectorStore</code> + M6/M7 retrieval config on AlrightTech Internal Docs</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> Max steps, cost budget, loop detection configured via env vars</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> Trace JSON per request with <code class="bg-stone-100 px-1 rounded">stop_reason</code></li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> README: example questions, env vars (<code class="bg-stone-100 px-1 rounded">OPENAI_API_KEY</code>, <code class="bg-stone-100 px-1 rounded">SEARCH_API_KEY</code>, <code class="bg-stone-100 px-1 rounded">AGENT_MAX_STEPS</code>)</li>
+        </ul>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Criterion</th>
+                        <th class="border border-stone-200 p-2">Weight</th>
+                        <th class="border border-stone-200 p-2">Excellent</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2">Control loop</td>
+                        <td class="border border-stone-200 p-2">35%</td>
+                        <td class="border border-stone-200 p-2">Clean ReAct parse; reliable termination; loop detection works</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2">Tool integration</td>
+                        <td class="border border-stone-200 p-2">35%</td>
+                        <td class="border border-stone-200 p-2">Retriever cites real chunks; search/calc used appropriately</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2">Observability</td>
+                        <td class="border border-stone-200 p-2">30%</td>
+                        <td class="border border-stone-200 p-2">Full traces; prompt version pinned; costs estimated per run</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Bridge -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">Bridge to Module 9</h3>
+        <p class="text-stone-700 mb-3 text-sm">
+            Your Research Assistant can <strong>act</strong> but forgets everything on the next message. It also replans from scratch every time — no task decomposition, no persistent user facts.
+        </p>
+        <p class="text-stone-700 mb-3 text-sm">Module 9 adds:</p>
+        <ul class="list-disc pl-5 text-stone-700 space-y-1 text-sm mb-4">
+            <li><strong>Short-term memory</strong> — buffering, summarization, sliding windows across multi-turn chat.</li>
+            <li><strong>Long-term memory</strong> — user preferences and facts in M5 <code class="bg-stone-100 px-1 rounded">VectorStore</code>.</li>
+            <li><strong>Planning</strong> — plan-and-execute, reflection, and persistence/checkpoints.</li>
+        </ul>
+        <p class="text-stone-700 text-sm">
+            <strong>Hand forward from M8:</strong> tool registry + retriever wrapper (unchanged), trace schema (extend with memory reads/writes in M9), env budget vars (reuse for planning steps).
+            Build the loop by hand here. In Module 10 you will rebuild the same agent as a LangGraph state machine — and you will know exactly what the framework is doing.
+        </p>
+        <p class="mt-6 text-sm flex flex-wrap gap-4">
+            <a href="#m7" class="text-stone-500 hover:underline">← M7 Advanced RAG &amp; Retrieval Optimization</a>
+            <a href="#m9" class="text-indigo-600 font-medium hover:underline">Next: M9 — Agent Memory &amp; Planning →</a>
+        </p>
+    </div>
+</section>

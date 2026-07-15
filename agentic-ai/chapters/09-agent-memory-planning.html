@@ -1,0 +1,727 @@
+<section id="m9" class="chapter space-y-8">
+    <header>
+        <p class="text-sm font-semibold uppercase tracking-wide text-indigo-600 mb-2">Part III — Agentic AI · Module 9 · 2 days</p>
+        <h2 class="text-4xl font-bold text-stone-900">M9: Agent Memory &amp; Planning</h2>
+        <p class="text-lg text-stone-600 mt-2">
+            Your M8 Research Assistant resets every request. It cannot remember that the user prefers bullet summaries, that they already asked about SSO yesterday,
+            or that a multi-step goal (&ldquo;book the offsite, draft the agenda, email the team&rdquo;) requires <strong>ordered subtasks</strong> — not one giant ReAct scramble.
+            Your job is <strong>memory as engineering</strong>: explicit buffers, summarization with audit trails, long-term retrieval from M5 <code class="bg-stone-100 px-1 rounded">VectorStore</code>,
+            context budgets, and planning patterns that decompose goals before the tool loop burns your step cap.
+        </p>
+        <div class="mt-4 bg-indigo-50 border border-indigo-100 rounded-lg p-4">
+            <p class="text-sm font-semibold text-indigo-900 mb-2">Learning objectives</p>
+            <ul class="list-disc pl-5 text-sm text-indigo-800 space-y-1">
+                <li>Distinguish short-term, working, and long-term memory — and what belongs in each</li>
+                <li>Implement conversation buffering, summarization, and sliding-window strategies</li>
+                <li>Store and retrieve user facts across sessions with vector memory (M5 <code class="bg-stone-100 px-1 rounded">VectorStore</code>)</li>
+                <li>Budget context windows deliberately instead of stuffing history</li>
+                <li>Build plan-and-execute and reflection steps; explain tree-of-thought at a high level</li>
+                <li>Persist agent state with checkpoints for resumable runs</li>
+            </ul>
+        </div>
+    </header>
+
+    <!-- Why this matters -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">Why This Matters in Production</h3>
+        <p class="text-stone-700 mb-4">
+            The production failure mode: paste the entire chat history into every prompt until you hit the context window, then silently drop the oldest messages —
+            including the user&rsquo;s allergy constraint or the CEO&rsquo;s name spelling. Or worse: summarize aggressively and lose the one fact that mattered.
+        </p>
+        <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-900">
+            <strong>Engineer&rsquo;s contract:</strong> memory is not the context window — the window is a <strong>budget</strong>; memory systems decide what gets compiled into it.
+            Log summary versions, expose a memory-inspection view, and checkpoint durable state.
+        </div>
+    </div>
+
+    <!-- Day 1 -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <p class="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-2">Day 1 — Memory types and context engineering</p>
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">9.1 Memory Taxonomy</h3>
+        <p class="text-stone-700 mb-4 text-sm">
+            User turns feed into short-term memory (buffer, summary, sliding window), working memory (ReAct scratchpad, current plan), and long-term memory
+            (semantic facts in VectorStore, episodic session summaries, user profile). All three compile into the assembled prompt under a token budget.
+        </p>
+        <div class="overflow-x-auto mb-4">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Memory type</th>
+                        <th class="border border-stone-200 p-2">Lifetime</th>
+                        <th class="border border-stone-200 p-2">Storage</th>
+                        <th class="border border-stone-200 p-2">Example</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Short-term</td>
+                        <td class="border border-stone-200 p-2">Current session</td>
+                        <td class="border border-stone-200 p-2">In-process list / summary string</td>
+                        <td class="border border-stone-200 p-2">Last 6 turns of chat</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Working</td>
+                        <td class="border border-stone-200 p-2">Current task</td>
+                        <td class="border border-stone-200 p-2">Agent scratchpad + plan</td>
+                        <td class="border border-stone-200 p-2">ReAct steps, subtask list</td>
+                    </tr>
+                    <tr class="bg-indigo-50">
+                        <td class="border border-stone-200 p-2 font-medium">Long-term (semantic)</td>
+                        <td class="border border-stone-200 p-2">Cross-session</td>
+                        <td class="border border-stone-200 p-2">M5 <code class="bg-stone-100 px-1 rounded">VectorStore</code></td>
+                        <td class="border border-stone-200 p-2">&ldquo;User prefers Markdown tables&rdquo;</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Long-term (episodic)</td>
+                        <td class="border border-stone-200 p-2">Cross-session</td>
+                        <td class="border border-stone-200 p-2">DB or vector index</td>
+                        <td class="border border-stone-200 p-2">&ldquo;2026-03-10: discussed Q2 offsite&rdquo;</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Profile</td>
+                        <td class="border border-stone-200 p-2">Cross-session</td>
+                        <td class="border border-stone-200 p-2">Structured record</td>
+                        <td class="border border-stone-200 p-2">Name, role, timezone, prefs</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">9.2 Conversation Buffering (Baseline)</h3>
+        <p class="text-stone-700 mb-4 text-sm">The simplest strategy: keep the last <em>N</em> message pairs.</p>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm"><code>from __future__ import annotations
+
+from pydantic import BaseModel, Field
+
+
+class ChatMessage(BaseModel):
+    role: str  # "user" | "assistant" | "system"
+    content: str
+
+
+class BufferMemory(BaseModel):
+    max_turns: int = 6
+    messages: list[ChatMessage] = Field(default_factory=list)
+
+    def append(self, role: str, content: str) -&gt; None:
+        self.messages.append(ChatMessage(role=role, content=content))
+        non_system = [m for m in self.messages if m.role != "system"]
+        if len(non_system) &gt; self.max_turns * 2:
+            drop = len(non_system) - self.max_turns * 2
+            trimmed: list[ChatMessage] = [m for m in self.messages if m.role == "system"]
+            trimmed.extend(non_system[drop:])
+            self.messages = trimmed
+
+    def as_openai_messages(self) -&gt; list[dict[str, str]]:
+        return [{"role": m.role, "content": m.content} for m in self.messages]</code></pre>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm mt-4">
+            <div class="border-l-4 border-emerald-500 pl-3">
+                <p class="font-semibold text-stone-800">Use raw buffering when</p>
+                <p class="text-stone-600">Sessions stay under ~10 turns; debugging memory behavior; low stakes.</p>
+            </div>
+            <div class="border-l-4 border-red-400 pl-3">
+                <p class="font-semibold text-stone-800">Skip raw buffering when</p>
+                <p class="text-stone-600">Dialogues exceed 20 turns — you will drop early constraints. Move to summarization or sliding window.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">9.3 Summarization-Based Memory</h3>
+        <p class="text-stone-700 mb-4 text-sm">Periodically compress older turns into a running summary. Keep recent turns verbatim. Log summary versions (<code class="bg-stone-100 px-1 rounded">memory-summary-v3</code>) so you can replay what the model &ldquo;remembered&rdquo; when it forgets a preference.</p>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm"><code>SUMMARIZE_PROMPT = """\
+Summarize the conversation so far for future context.
+Preserve: user preferences, names, decisions, open tasks, constraints.
+Omit: pleasantries, repeated questions already resolved.
+Existing summary (may be empty):
+{existing}
+
+New messages to merge:
+{new_messages}
+
+Updated summary:"""
+
+
+def update_summary(
+    existing: str,
+    new_messages: list[ChatMessage],
+    llm_call,
+) -&gt; str:
+    block = "\n".join(f"{m.role}: {m.content}" for m in new_messages)
+    prompt = SUMMARIZE_PROMPT.format(existing=existing or "(none)", new_messages=block)
+    return llm_call(prompt).strip()
+
+
+class SummarizedMemory(BaseModel):
+    summary: str = ""
+    recent: list[ChatMessage] = Field(default_factory=list)
+    summarize_every: int = 4  # turns
+
+    def maybe_summarize(self, llm_call) -&gt; None:
+        user_assistant = [m for m in self.recent if m.role in ("user", "assistant")]
+        if len(user_assistant) &gt;= self.summarize_every * 2:
+            to_fold = user_assistant[: self.summarize_every * 2]
+            self.summary = update_summary(self.summary, to_fold, llm_call)
+            self.recent = [m for m in self.recent if m not in to_fold]
+
+    def compile(self) -&gt; str:
+        parts = []
+        if self.summary:
+            parts.append(f"Conversation summary:\n{self.summary}")
+        if self.recent:
+            parts.append(
+                "Recent messages:\n"
+                + "\n".join(f"{m.role}: {m.content}" for m in self.recent)
+            )
+        return "\n\n".join(parts)</code></pre>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm mt-4">
+            <div class="border-l-4 border-emerald-500 pl-3">
+                <p class="font-semibold text-stone-800">Use summarization when</p>
+                <p class="text-stone-600">Long support sessions; cost of full history exceeds ~4k tokens.</p>
+            </div>
+            <div class="border-l-4 border-red-400 pl-3">
+                <p class="font-semibold text-stone-800">Skip summarization when</p>
+                <p class="text-stone-600">Legal/medical-adjacent threads requiring verbatim retention — store full transcript externally; don&rsquo;t rely on LLM summary alone.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">9.4 Sliding Window with Token Budget</h3>
+        <p class="text-stone-700 mb-4 text-sm">Combine a char/token estimator with priority slots. Never drop first: system contract → long-term facts → running summary → recent turns → working scratchpad.</p>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm"><code>def estimate_tokens(text: str) -&gt; int:
+    return max(1, len(text) // 4)
+
+
+class ContextBudget(BaseModel):
+    max_tokens: int = 8_000
+    reserved_for_tools: int = 2_000
+    reserved_for_system: int = 800
+
+    def available_for_memory(self) -&gt; int:
+        return self.max_tokens - self.reserved_for_tools - self.reserved_for_system
+
+
+def pack_memory(
+    system: str,
+    memory_block: str,
+    working_scratchpad: str,
+    budget: ContextBudget,
+) -&gt; str:
+    """Drop oldest lines from memory_block until under budget."""
+    parts = [("system", system), ("memory", memory_block), ("working", working_scratchpad)]
+    total = sum(estimate_tokens(p[1]) for p in parts)
+    avail = budget.available_for_memory()
+    if total &lt;= avail + budget.reserved_for_system:
+        return memory_block
+    lines = memory_block.split("\n")
+    while lines and estimate_tokens("\n".join(lines)) &gt; avail:
+        lines.pop(0)
+    return "\n".join(lines)</code></pre>
+        <ol class="list-decimal pl-5 text-stone-700 space-y-1 text-sm mt-4">
+            <li>System contract + safety rules</li>
+            <li>Long-term retrieved facts (user-specific)</li>
+            <li>Running summary</li>
+            <li>Recent verbatim turns</li>
+            <li>Working scratchpad (current ReAct steps)</li>
+        </ol>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">9.5 Long-Term Memory with M5 VectorStore</h3>
+        <p class="text-stone-700 mb-4 text-sm">Reuse the same <code class="bg-stone-100 px-1 rounded">VectorStore</code> abstraction from Module 5 — separate <strong>collection</strong> from doc RAG.</p>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm"><code>import os
+import uuid
+from datetime import datetime, timezone
+
+from pydantic import BaseModel
+
+# Reuse M5 types: VectorRecord, SearchHit from your vector_store module
+
+
+class MemoryFact(BaseModel):
+    fact_id: str
+    user_id: str
+    text: str
+    category: str  # preference | profile | episodic
+    created_at: str
+
+
+MEMORY_COLLECTION = os.getenv("MEMORY_COLLECTION", "user_memory")
+
+
+def write_memory(
+    store,
+    embed_fn,
+    user_id: str,
+    text: str,
+    category: str = "preference",
+) -&gt; str:
+    fact_id = f"{user_id}#{uuid.uuid4().hex[:8]}"
+    vec = embed_fn([text])[0]
+    record = VectorRecord(
+        chunk_id=fact_id,
+        text=text,
+        embedding=vec,
+        metadata={
+            "user_id": user_id,
+            "category": category,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        },
+    )
+    store.upsert(MEMORY_COLLECTION, [record])
+    return fact_id
+
+
+def recall_memories(
+    store,
+    embed_fn,
+    user_id: str,
+    query: str,
+    top_k: int = 5,
+) -&gt; list[SearchHit]:
+    vec = embed_fn([query])[0]
+    return store.query(
+        MEMORY_COLLECTION,
+        vec,
+        top_k=top_k,
+        filters={"user_id": user_id},
+    )
+
+
+def format_memory_hits(hits: list[SearchHit]) -&gt; str:
+    if not hits:
+        return "No relevant long-term memories."
+    return "Known about this user:\n" + "\n".join(
+        f"- [{h.chunk_id}] {h.text} (score: {h.score:.2f})" for h in hits
+    )</code></pre>
+        <p class="text-stone-700 mb-3 text-sm mt-4"><strong>Write triggers:</strong> explicit (&ldquo;remember that I prefer bullet points&rdquo;), implicit (extract after session — M12 eval territory), or tool (<code class="bg-stone-100 px-1 rounded">save_memory</code> the agent calls).</p>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm mb-4">
+            <div class="border-l-4 border-emerald-500 pl-3">
+                <p class="font-semibold text-stone-800">Use vector long-term memory when</p>
+                <p class="text-stone-600">Preferences, standing facts, episodic &ldquo;what we discussed&rdquo; retrieval.</p>
+            </div>
+            <div class="border-l-4 border-red-400 pl-3">
+                <p class="font-semibold text-stone-800">Skip vector long-term memory when</p>
+                <p class="text-stone-600">Secrets, credentials, or PCI — never embed API keys &ldquo;for convenience.&rdquo;</p>
+            </div>
+        </div>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm"><code>def build_agent_context(user_id: str, question: str, session_memory: SummarizedMemory, store, embed_fn) -&gt; str:
+    hits = recall_memories(store, embed_fn, user_id, question)
+    long_term = format_memory_hits(hits)
+    short_term = session_memory.compile()
+    return f"{long_term}\n\n{short_term}\n\nCurrent question: {question}"</code></pre>
+    </div>
+
+    <!-- Day 2 -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <p class="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-2">Day 2 — Planning, reflection, and persistence</p>
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">9.6 Plan-and-Execute Pattern</h3>
+        <p class="text-stone-700 mb-4 text-sm">
+            For complex goals, <strong>plan first</strong>, then execute steps with the M8 tool loop:
+            User Goal → Planner LLM → Ordered Subtasks → Executor (ReAct per subtask) → All done? → Optional Reflection → Final Response.
+        </p>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm"><code>import json
+
+from pydantic import BaseModel
+
+
+class PlanStep(BaseModel):
+    id: int
+    description: str
+    status: str = "pending"  # pending | running | done | failed
+
+
+class TaskPlan(BaseModel):
+    goal: str
+    steps: list[PlanStep]
+
+
+PLANNER_PROMPT = """\
+Decompose this goal into 3-7 ordered, actionable subtasks.
+Return JSON: {"steps": [{"id": 1, "description": "..."}, ...]}
+Goal: {goal}
+"""
+
+
+def create_plan(goal: str, llm_call) -&gt; TaskPlan:
+    raw = llm_call(PLANNER_PROMPT.format(goal=goal))
+    data = json.loads(raw)
+    steps = [PlanStep(**s) for s in data["steps"]]
+    return TaskPlan(goal=goal, steps=steps)
+
+
+def run_plan_and_execute(
+    plan: TaskPlan,
+    run_subtask,
+) -&gt; TaskPlan:
+    for step in plan.steps:
+        step.status = "running"
+        result = run_subtask(step.description)  # wraps M8 ReAct for one subtask
+        step.status = "done" if result.ok else "failed"
+        if step.status == "failed":
+            break
+    return plan</code></pre>
+        <p class="text-sm text-stone-600 mt-2">Each subtask gets its <strong>own</strong> scratchpad and step budget — prevents one subtask from consuming all 8 steps.</p>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm mt-4">
+            <div class="border-l-4 border-emerald-500 pl-3">
+                <p class="font-semibold text-stone-800">Use plan-and-execute when</p>
+                <p class="text-stone-600">3+ distinct phases (research → draft → review); user goal reads like a checklist.</p>
+            </div>
+            <div class="border-l-4 border-red-400 pl-3">
+                <p class="font-semibold text-stone-800">Skip plan-and-execute when</p>
+                <p class="text-stone-600">Single-shot lookup (&ldquo;what is our PTO policy?&rdquo;) — planner adds latency and cost.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">9.7 Reflection and Self-Critique</h3>
+        <p class="text-stone-700 mb-4 text-sm">After a draft answer or completed plan, a <strong>critic</strong> pass checks quality before the user sees output. Reflection costs extra tokens — cap rounds (1–2) and skip for low-stakes chat.</p>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm"><code>REFLECT_PROMPT = """\
+You are a critic. Review the draft against the original goal.
+List specific issues (missing citations, wrong tone, factual gaps).
+If acceptable, respond: APPROVED
+Otherwise respond: REVISE followed by bullet fixes.
+
+Goal: {goal}
+Draft: {draft}
+"""
+
+
+def reflect_and_revise(goal: str, draft: str, llm_call, max_rounds: int = 2) -&gt; str:
+    current = draft
+    for _ in range(max_rounds):
+        verdict = llm_call(REFLECT_PROMPT.format(goal=goal, draft=current))
+        if verdict.strip().startswith("APPROVED"):
+            return current
+        revise_prompt = f"Revise the draft addressing:\n{verdict}\n\nDraft:\n{current}"
+        current = llm_call(revise_prompt)
+    return current</code></pre>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm mt-4">
+            <div class="border-l-4 border-emerald-500 pl-3">
+                <p class="font-semibold text-stone-800">Use reflection when</p>
+                <p class="text-stone-600">External-facing content; multi-source synthesis; user asked for high accuracy.</p>
+            </div>
+            <div class="border-l-4 border-red-400 pl-3">
+                <p class="font-semibold text-stone-800">Skip reflection when</p>
+                <p class="text-stone-600">Latency-sensitive UI; trivial FAQ — reflection doubles time-to-first-token.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">9.8 Tree-of-Thought (Overview Only)</h3>
+        <p class="text-stone-700 mb-4 text-sm">
+            <strong>Tree-of-thought (ToT)</strong> explores multiple reasoning branches, scores them, and expands the best — search over thoughts, not just one ReAct chain.
+            Problem → Branch A / B / C → Score each → Expand best branch → Solution. This course treats ToT as <strong>awareness</strong>, not a lab requirement.
+        </p>
+        <div class="overflow-x-auto mb-4">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Aspect</th>
+                        <th class="border border-stone-200 p-2">ReAct (M8)</th>
+                        <th class="border border-stone-200 p-2">Plan-and-execute (M9)</th>
+                        <th class="border border-stone-200 p-2">ToT</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Branching</td>
+                        <td class="border border-stone-200 p-2">Single path</td>
+                        <td class="border border-stone-200 p-2">Linear subtasks</td>
+                        <td class="border border-stone-200 p-2">Multiple parallel thoughts</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Cost</td>
+                        <td class="border border-stone-200 p-2">Moderate</td>
+                        <td class="border border-stone-200 p-2">Moderate–high</td>
+                        <td class="border border-stone-200 p-2">High (× branches)</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Fit</td>
+                        <td class="border border-stone-200 p-2">Tool use</td>
+                        <td class="border border-stone-200 p-2">Structured projects</td>
+                        <td class="border border-stone-200 p-2">Puzzle-like reasoning</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <p class="text-sm text-stone-600">Reach for ToT when benchmarks show single-path agents stuck on combinatorial planning — not for doc Q&amp;A.</p>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">9.9 Persistence and Checkpoints</h3>
+        <p class="text-stone-700 mb-4 text-sm">Durable state lets agents <strong>resume</strong> after crash, deploy, or human approval (M10 HITL). Store under <code class="bg-stone-100 px-1 rounded">state/checkpoints/{session_id}.json</code>. Module 10 moves this to LangGraph&rsquo;s checkpoint backend — same concepts, better tooling.</p>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm"><code>import json
+from pathlib import Path
+
+
+class Checkpoint(BaseModel):
+    session_id: str
+    user_id: str
+    plan: TaskPlan | None = None
+    memory_summary: str = ""
+    agent_steps: list[dict] = Field(default_factory=list)
+    version: int = 1
+
+
+def save_checkpoint(path: Path, ckpt: Checkpoint) -&gt; None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(ckpt.model_dump_json(indent=2), encoding="utf-8")
+
+
+def load_checkpoint(path: Path) -&gt; Checkpoint | None:
+    if not path.exists():
+        return None
+    return Checkpoint.model_validate_json(path.read_text(encoding="utf-8"))</code></pre>
+        <p class="text-sm text-stone-600 mt-2"><strong>Checkpoint contents:</strong> plan progress, memory summary, incomplete scratchpad — not full embedding indexes (those live in M5).</p>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">9.10 Memory Inspection View (Product Requirement)</h3>
+        <p class="text-stone-700 mb-4 text-sm">Your Personal Assistant mini project must expose <strong>what the agent remembers</strong>. Transparency reduces &ldquo;creepy black box&rdquo; support tickets and makes wrong memories debuggable.</p>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm"><code>def list_user_memories(store, user_id: str, limit: int = 50) -&gt; list[dict]:
+    # Implementation depends on store backend — query by metadata filter
+    # Return fact_id, text, category, created_at for UI table
+    ...</code></pre>
+    </div>
+
+    <!-- Decision guide -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">Engineering Decision Guide</h3>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Decision</th>
+                        <th class="border border-stone-200 p-2">Guidance</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Buffer vs summarize</td>
+                        <td class="border border-stone-200 p-2">Buffer ≤10 turns; summarize for longer sessions</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Long-term store</td>
+                        <td class="border border-stone-200 p-2">M5 <code class="bg-stone-100 px-1 rounded">VectorStore</code>, separate <code class="bg-stone-100 px-1 rounded">user_memory</code> collection</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">When to write memory</td>
+                        <td class="border border-stone-200 p-2">Explicit user ask + high-confidence extractions only</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Context budget</td>
+                        <td class="border border-stone-200 p-2">Reserve 25–30% for tools + system; measure with real traces</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Planning</td>
+                        <td class="border border-stone-200 p-2">Plan-and-execute for 3+ phase goals; else M8 ReAct only</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Reflection</td>
+                        <td class="border border-stone-200 p-2">1–2 rounds max; skip on simple retrieval</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Checkpoints</td>
+                        <td class="border border-stone-200 p-2">JSON files in M9; LangGraph saver in M10</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Failure modes -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">Failure Modes &amp; Diagnostics</h3>
+        <div class="overflow-x-auto mb-4">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Failure</th>
+                        <th class="border border-stone-200 p-2">Symptom</th>
+                        <th class="border border-stone-200 p-2">Where to look</th>
+                        <th class="border border-stone-200 p-2">First fix</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Lost preference</td>
+                        <td class="border border-stone-200 p-2">User repeats &ldquo;I told you already&rdquo;</td>
+                        <td class="border border-stone-200 p-2">Summary log; dropped buffer</td>
+                        <td class="border border-stone-200 p-2">Lower summarize aggressiveness; write to long-term</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Wrong memory retrieved</td>
+                        <td class="border border-stone-200 p-2">Irrelevant old fact injected</td>
+                        <td class="border border-stone-200 p-2">Recall hits + scores</td>
+                        <td class="border border-stone-200 p-2">Raise score floor; tag categories; decay old facts</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Memory pollution</td>
+                        <td class="border border-stone-200 p-2">Agent saves nonsense</td>
+                        <td class="border border-stone-200 p-2"><code class="bg-stone-100 px-1 rounded">write_memory</code> call sites</td>
+                        <td class="border border-stone-200 p-2">Gate writes behind explicit tool or confidence</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Plan drift</td>
+                        <td class="border border-stone-200 p-2">Subtasks don&rsquo;t match goal</td>
+                        <td class="border border-stone-200 p-2">Planner JSON vs executions</td>
+                        <td class="border border-stone-200 p-2">Re-plan after failed subtask; shorten plan length</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Reflection loop</td>
+                        <td class="border border-stone-200 p-2">Never APPROVED</td>
+                        <td class="border border-stone-200 p-2">Reflect trace</td>
+                        <td class="border border-stone-200 p-2">Cap rounds; soften critic prompt</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Checkpoint stale</td>
+                        <td class="border border-stone-200 p-2">Resumed agent repeats work</td>
+                        <td class="border border-stone-200 p-2"><code class="bg-stone-100 px-1 rounded">step.status</code> in checkpoint</td>
+                        <td class="border border-stone-200 p-2">Mark subtasks done atomically before save</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <p class="text-sm text-stone-600"><strong>Debug order:</strong> memory inspection UI → summary text → recall hits → plan status → checkpoint file.</p>
+    </div>
+
+    <!-- Labs -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">Hands-on Labs</h3>
+        <div class="space-y-4">
+            <div class="border border-stone-200 rounded-lg p-4">
+                <h4 class="font-semibold text-stone-800">Lab 9.1 — Summarization Memory</h4>
+                <ol class="list-decimal pl-5 text-sm text-stone-700 mt-2 space-y-1">
+                    <li>Add <code class="bg-stone-100 px-1 rounded">SummarizedMemory</code> to your M8 agent.</li>
+                    <li>Run a 12-turn scripted dialogue (preferences + task constraints).</li>
+                    <li>Confirm early preferences survive in summary after recent turns grow.</li>
+                </ol>
+                <p class="text-xs text-emerald-700 mt-2"><strong>Done when:</strong> summary version logged after each fold; preference from turn 2 still present at turn 12.</p>
+            </div>
+            <div class="border border-stone-200 rounded-lg p-4">
+                <h4 class="font-semibold text-stone-800">Lab 9.2 — Long-Term Vector Memory</h4>
+                <ol class="list-decimal pl-5 text-sm text-stone-700 mt-2 space-y-1">
+                    <li>Create <code class="bg-stone-100 px-1 rounded">user_memory</code> collection in M5 store.</li>
+                    <li>Implement <code class="bg-stone-100 px-1 rounded">write_memory</code> and <code class="bg-stone-100 px-1 rounded">recall_memories</code> with <code class="bg-stone-100 px-1 rounded">user_id</code> filter.</li>
+                    <li>Session A: &ldquo;Remember I prefer bullet summaries.&rdquo; Session B (new process): ask for a summary — verify recall.</li>
+                </ol>
+                <p class="text-xs text-emerald-700 mt-2"><strong>Done when:</strong> memory persists across restarted Python process; recall returns the stored preference with score logged.</p>
+            </div>
+            <div class="border border-stone-200 rounded-lg p-4">
+                <h4 class="font-semibold text-stone-800">Lab 9.3 — Plan-and-Execute</h4>
+                <ol class="list-decimal pl-5 text-sm text-stone-700 mt-2 space-y-1">
+                    <li>Planner decomposes: &ldquo;Research our deploy rollback runbook and draft a one-paragraph exec summary.&rdquo;</li>
+                    <li>Executor runs M8 ReAct per subtask with isolated step budgets.</li>
+                    <li>Log plan JSON and per-subtask traces.</li>
+                </ol>
+                <p class="text-xs text-emerald-700 mt-2"><strong>Done when:</strong> ≥2 subtasks executed in order; failed subtask stops plan with <code class="bg-stone-100 px-1 rounded">status: failed</code>.</p>
+            </div>
+            <div class="border border-stone-200 rounded-lg p-4">
+                <h4 class="font-semibold text-stone-800">Lab 9.4 — Reflection Pass</h4>
+                <ol class="list-decimal pl-5 text-sm text-stone-700 mt-2 space-y-1">
+                    <li>Generate draft answer without citations.</li>
+                    <li>Run reflection; confirm REVISE triggers citation fix.</li>
+                    <li>Cap at 2 rounds; log APPROVED or final best-effort.</li>
+                </ol>
+                <p class="text-xs text-emerald-700 mt-2"><strong>Done when:</strong> critic identifies missing citations in test case; revised draft includes <code class="bg-stone-100 px-1 rounded">[chunk_id]</code> from retriever.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mini project -->
+    <div class="bg-white p-6 rounded-lg shadow-md border-2 border-indigo-200">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-2">Mini Project — Personal Assistant with Memory</h3>
+        <p class="text-stone-700 mb-4">
+            A multi-turn assistant that <strong>remembers</strong> user preferences and facts <strong>across sessions</strong> (M5 long-term memory),
+            <strong>plans</strong> multi-step tasks with plan-and-execute, <strong>reflects</strong> on drafts before returning high-stakes answers,
+            exposes a <strong>memory-inspection view</strong> (CLI table or API endpoint) listing stored facts by <code class="bg-stone-100 px-1 rounded">user_id</code>,
+            and reuses M8 tool registry (retriever over AlrightTech Internal Docs, search, calculator).
+        </p>
+        <div class="flex flex-wrap items-center justify-center gap-2 text-center text-sm mb-4">
+            <div class="bg-indigo-50 px-3 py-2 rounded-lg border border-indigo-100 font-medium text-indigo-900">Chat UI or CLI</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-purple-50 px-3 py-2 rounded-lg border border-purple-100 font-medium text-purple-900">Personal Assistant (M9)</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-amber-50 px-3 py-2 rounded-lg border border-amber-100 font-medium text-amber-900">Session + Vector Memory</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-100 font-medium text-emerald-900">Planner → M8 Executor</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-indigo-50 px-3 py-2 rounded-lg border border-indigo-100 font-medium text-indigo-900">Reflection + Checkpoints</div>
+        </div>
+        <h4 class="font-semibold text-stone-800 mb-2">Acceptance criteria</h4>
+        <ul class="space-y-2 text-sm text-stone-700 mb-4">
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> Multi-turn chat with summarization-based short-term memory</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> Long-term facts written and recalled per <code class="bg-stone-100 px-1 rounded">user_id</code></li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> Plan-and-execute for goals with 3+ subtasks demonstrated once</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> Reflection on at least one multi-source draft</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> Memory inspection lists fact_id, text, category, created_at</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> Checkpoint save/load demonstrated for interrupted plan</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> README documents memory collections, env vars, and inspection command</li>
+        </ul>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Criterion</th>
+                        <th class="border border-stone-200 p-2">Weight</th>
+                        <th class="border border-stone-200 p-2">Excellent</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2">Memory correctness</td>
+                        <td class="border border-stone-200 p-2">35%</td>
+                        <td class="border border-stone-200 p-2">Preferences persist across sessions; recall relevant; inspection accurate</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2">Planning</td>
+                        <td class="border border-stone-200 p-2">30%</td>
+                        <td class="border border-stone-200 p-2">Ordered subtasks; isolated budgets; clean failure on subtask error</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2">Integration</td>
+                        <td class="border border-stone-200 p-2">20%</td>
+                        <td class="border border-stone-200 p-2">M8 tools + M5 store + M6 retriever compose without duplication</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2">Transparency</td>
+                        <td class="border border-stone-200 p-2">15%</td>
+                        <td class="border border-stone-200 p-2">Summary versions + memory view + checkpoint files for debug</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Bridge -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">Bridge to Module 10</h3>
+        <p class="text-stone-700 mb-3 text-sm">
+            Your Personal Assistant now has memory and planning — but the control flow lives in ad-hoc Python: nested loops, manual checkpoint files, no streaming, no human-in-the-loop.
+        </p>
+        <p class="text-stone-700 mb-3 text-sm">Module 10 <strong>rebuilds the M8 agent in LangGraph</strong>:</p>
+        <ul class="list-disc pl-5 text-stone-700 space-y-1 text-sm mb-4">
+            <li>Explicit <strong>state graph</strong> (nodes, edges, cycles).</li>
+            <li><strong>Human-in-the-loop</strong> interrupts before writes or external side effects.</li>
+            <li><strong>Durable checkpoints</strong> with framework-backed persistence.</li>
+            <li><strong>Streaming</strong> tokens and tool events to the UI.</li>
+        </ul>
+        <p class="text-stone-700 text-sm">
+            <strong>Hand forward from M9:</strong> <code class="bg-stone-100 px-1 rounded">SummarizedMemory.compile()</code> → graph state field <code class="bg-stone-100 px-1 rounded">conversation_context</code>;
+            <code class="bg-stone-100 px-1 rounded">user_memory</code> collection + recall/format helpers (unchanged);
+            <code class="bg-stone-100 px-1 rounded">TaskPlan</code> schema → planner node output;
+            Checkpoint JSON shape → reference when mapping to LangGraph checkpointer.
+            You built the loop and memory by hand so Module 10&rsquo;s abstractions are choices — not magic.
+        </p>
+        <p class="mt-6 text-sm flex flex-wrap gap-4">
+            <a href="#m8" class="text-stone-500 hover:underline">← M8 AI Agents — Fundamentals</a>
+            <a href="#m10" class="text-indigo-600 font-medium hover:underline">Next: M10 — Agent Orchestration Frameworks →</a>
+        </p>
+    </div>
+</section>

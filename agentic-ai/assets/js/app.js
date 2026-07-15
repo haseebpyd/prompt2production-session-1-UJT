@@ -7,6 +7,14 @@ const CHAPTERS = {
     m5: '05-vector-databases',
     m6: '06-retrieval-augmented-generation',
     m7: '07-advanced-rag-optimization',
+    m8: '08-ai-agents-fundamentals',
+    m9: '09-agent-memory-planning',
+    m10: '10-agent-orchestration-frameworks',
+    m11: '11-multi-agent-systems',
+    m12: '12-llm-agent-evaluation',
+    m13: '13-guardrails-safety-security',
+    m14: '14-deployment-observability',
+    m15: '15-capstone-overview',
 };
 
 const CHAPTER_LABELS = {
@@ -18,6 +26,14 @@ const CHAPTER_LABELS = {
     m5: 'M5. Vector Databases',
     m6: 'M6. Retrieval-Augmented Generation (RAG)',
     m7: 'M7. Advanced RAG & Retrieval Optimization',
+    m8: 'M8. AI Agents — Fundamentals',
+    m9: 'M9. Agent Memory & Planning',
+    m10: 'M10. Agent Orchestration & Frameworks',
+    m11: 'M11. Multi-Agent Systems',
+    m12: 'M12. LLM & Agent Evaluation',
+    m13: 'M13. Guardrails, Safety & Security',
+    m14: 'M14. Deployment, Observability & Production',
+    m15: 'Capstone — Week 8',
 };
 
 const TARGET_TO_CHAPTER = Object.fromEntries(

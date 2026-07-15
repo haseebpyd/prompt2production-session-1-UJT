@@ -1,0 +1,801 @@
+<section id="m12" class="chapter space-y-8">
+    <header>
+        <p class="text-sm font-semibold uppercase tracking-wide text-indigo-600 mb-2">Part IV — Production AI · Module 12 · 2 days</p>
+        <h2 class="text-4xl font-bold text-stone-900">M12: LLM &amp; Agent Evaluation</h2>
+        <p class="text-lg text-stone-600 mt-2">
+            Your Module 6 RAG app &ldquo;looked fine&rdquo; in the demo. Your Module 8 Research Assistant completed three hallway questions.
+            Then someone changed the prompt, swapped the embed model, and added a reranker — and nobody noticed faithfulness drop from 0.81 to 0.62
+            until a new hire followed a hallucinated SSO step. <strong>Evaluation is how AI engineers ship changes without gambling on users.</strong>
+            Part IV starts here: a frozen golden set, a scorecard, and a CI gate that fails when metrics regress.
+        </p>
+        <div class="mt-4 bg-indigo-50 border border-indigo-100 rounded-lg p-4">
+            <p class="text-sm font-semibold text-indigo-900 mb-2">Learning objectives</p>
+            <ul class="list-disc pl-5 text-sm text-indigo-800 space-y-1">
+                <li>Practice eval-driven development: change → measure → ship only if metrics hold</li>
+                <li>Classify evaluation types (unit, integration, end-to-end, adversarial) and pick the right layer for each change</li>
+                <li>Build and maintain golden datasets with stable labels and version pins</li>
+                <li>Measure task quality, RAG faithfulness/relevance/context, and agent success/tool accuracy/steps/cost</li>
+                <li>Wire evaluation tooling (promptfoo, RAGAS, DeepEval, LangSmith/Langfuse, Braintrust) into a repeatable harness</li>
+                <li>Integrate regression checks into CI and distinguish offline eval from online A/B monitoring</li>
+                <li>Recognize LLM-as-judge pitfalls and design mitigations</li>
+            </ul>
+        </div>
+    </header>
+
+    <!-- Day 1 -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <p class="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-2">Day 1 — Eval-driven development and golden datasets</p>
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">12.1 The Eval-Driven Loop</h3>
+        <p class="text-stone-700 mb-4">
+            Eval-driven development (EDD) is the same discipline that turned software engineering from &ldquo;it works on my machine&rdquo;
+            into reproducible releases — applied to nondeterministic models. You already have the raw materials: M2 golden prompts,
+            <code class="bg-stone-100 px-1 rounded">evals/reports/m6-baseline.md</code>, M7 before/after scorecards, and JSON agent traces from M8–M11.
+            Module 12 unifies them into one <strong>Evaluation Harness</strong>.
+        </p>
+        <div class="flex flex-wrap items-center justify-center gap-2 text-center text-sm mb-4">
+            <div class="bg-indigo-50 px-3 py-2 rounded-lg border border-indigo-100 font-medium text-indigo-900">Change prompt / retriever / agent</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-purple-50 px-3 py-2 rounded-lg border border-purple-100 font-medium text-purple-900">Run golden set</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-amber-50 px-3 py-2 rounded-lg border border-amber-100 font-medium text-amber-900">Compute scorecard</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-100 font-medium text-emerald-900">Meets threshold?</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-indigo-50 px-3 py-2 rounded-lg border border-indigo-100 font-medium text-indigo-900">Ship or revert</div>
+        </div>
+        <div class="overflow-x-auto mb-4">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Principle</th>
+                        <th class="border border-stone-200 p-2">What it means in practice</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Freeze before you optimize</td>
+                        <td class="border border-stone-200 p-2">Golden set v1 is sacred; add cases, don&rsquo;t relabel mid-sprint</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">One variable at a time</td>
+                        <td class="border border-stone-200 p-2">M7 lesson: rerank alone, then rewrite alone — not both in one commit</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Relative &gt; absolute</td>
+                        <td class="border border-stone-200 p-2">Judge scores drift; compare to <code class="bg-stone-100 px-1 rounded text-xs">m6-baseline.md</code>, not a magic 0.85</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Traces are evidence</td>
+                        <td class="border border-stone-200 p-2">Every eval row should link to retrieval hits, tool calls, and prompt version</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+            <div class="bg-emerald-50 border border-emerald-200 p-4 rounded-lg">
+                <p class="font-semibold text-emerald-900">Use eval-driven development when</p>
+                <ul class="list-disc pl-5 text-emerald-800 mt-2 space-y-1">
+                    <li>Any change touches prompts, retrieval, tools, models, or agent topology</li>
+                </ul>
+            </div>
+            <div class="bg-stone-50 border border-stone-200 p-4 rounded-lg">
+                <p class="font-semibold text-stone-800">Skip when</p>
+                <ul class="list-disc pl-5 text-stone-700 mt-2 space-y-1">
+                    <li>Pure refactors with zero behavior change <em>and</em> identical eval outputs on a smoke set — rare in LLM systems</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">12.2 Evaluation Types (Where to Invest)</h3>
+        <div class="overflow-x-auto mb-4">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Layer</th>
+                        <th class="border border-stone-200 p-2">What you test</th>
+                        <th class="border border-stone-200 p-2">Examples</th>
+                        <th class="border border-stone-200 p-2">Typical cadence</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Unit</td>
+                        <td class="border border-stone-200 p-2">Single function / prompt slice</td>
+                        <td class="border border-stone-200 p-2">Citation validator, JSON schema parse, PII regex</td>
+                        <td class="border border-stone-200 p-2">Every commit</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Integration</td>
+                        <td class="border border-stone-200 p-2">Two components wired</td>
+                        <td class="border border-stone-200 p-2">Retriever returns gold chunk ids; tool registry dispatches</td>
+                        <td class="border border-stone-200 p-2">Every PR</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">End-to-end (E2E)</td>
+                        <td class="border border-stone-200 p-2">Full user path</td>
+                        <td class="border border-stone-200 p-2">Question → cited answer; research topic → grounded report</td>
+                        <td class="border border-stone-200 p-2">Nightly + pre-release</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Adversarial / red-team</td>
+                        <td class="border border-stone-200 p-2">Attack and edge cases</td>
+                        <td class="border border-stone-200 p-2">Injection strings, jailbreaks, out-of-corpus (M13 expands)</td>
+                        <td class="border border-stone-200 p-2">Weekly + before launch</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <p class="text-stone-700 text-sm">Start with E2E on your frozen golden set. Add unit tests where failures are cheap and deterministic. Adversarial suites belong in M13 but <strong>reserve slots</strong> in the harness now.</p>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">12.3 Golden Dataset Design</h3>
+        <p class="text-stone-700 mb-4">A golden set is not &ldquo;questions we like.&rdquo; It is a <strong>labeled contract</strong> between product and engineering.</p>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm mb-4"><code>{
+  "id": "rag-q042",
+  "type": "rag",
+  "question": "How do we rollback a failed Railway deploy?",
+  "ground_truth": "Follow the revert-failed-deploy runbook: ...",
+  "ground_truth_chunk_ids": ["runbooks/revert-failed-deploy.md#c003"],
+  "tags": ["runbook", "deploy", "single-hop"],
+  "difficulty": "easy"
+}</code></pre>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm mb-4"><code>{
+  "id": "agent-a017",
+  "type": "agent",
+  "task": "Compare our SSO policy with NIST guidance; cite internal docs and one public source.",
+  "success_criteria": {
+    "must_cite_internal": true,
+    "must_call_tools": ["rag_retriever", "web_search"],
+    "max_steps": 8,
+    "max_cost_usd": 0.15
+  },
+  "tags": ["multi-source", "research"]
+}</code></pre>
+        <div class="overflow-x-auto mb-4">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Coverage dimension</th>
+                        <th class="border border-stone-200 p-2">Why it matters</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Intent mix</td>
+                        <td class="border border-stone-200 p-2">Policy how-to, troubleshooting, comparison, refusal</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Difficulty</td>
+                        <td class="border border-stone-200 p-2">Single-hop, multi-hop, ambiguous wording</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Failure history</td>
+                        <td class="border border-stone-200 p-2">Production tickets and support escalations</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Safety edges</td>
+                        <td class="border border-stone-200 p-2">Out-of-corpus, conflicting docs, stale <code class="bg-stone-100 px-1 rounded text-xs">updated_at</code></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <p class="text-stone-700 mb-3"><strong>Versioning:</strong> store as <code class="bg-stone-100 px-1 rounded">evals/golden/v1.jsonl</code>. Bump to <code class="bg-stone-100 px-1 rounded">v2</code> only when you add cases — never silently edit <code class="bg-stone-100 px-1 rounded">ground_truth</code> on v1 rows.</p>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm"><code>from pathlib import Path
+import json
+
+def load_golden(path: Path) -&gt; list[dict]:
+    rows = []
+    with path.open() as f:
+        for line in f:
+            rows.append(json.loads(line))
+    return rows</code></pre>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">12.4 Metric Families</h3>
+        <h4 class="font-semibold text-stone-800 mb-2">Task-level metrics</h4>
+        <div class="overflow-x-auto mb-4">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Metric</th>
+                        <th class="border border-stone-200 p-2">Definition</th>
+                        <th class="border border-stone-200 p-2">Tooling</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Exact match / F1</td>
+                        <td class="border border-stone-200 p-2">Token overlap vs <code class="bg-stone-100 px-1 rounded text-xs">ground_truth</code></td>
+                        <td class="border border-stone-200 p-2">DeepEval, custom</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Pass@k</td>
+                        <td class="border border-stone-200 p-2">Any of k samples passes rubric</td>
+                        <td class="border border-stone-200 p-2">Agent retries</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Human preference</td>
+                        <td class="border border-stone-200 p-2">Side-by-side rating</td>
+                        <td class="border border-stone-200 p-2">Production sampling</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm mb-4">
+            <div class="bg-emerald-50 border border-emerald-200 p-4 rounded-lg">
+                <p class="font-semibold text-emerald-900">Use exact match when</p>
+                <p class="text-emerald-800 mt-1">Short factual answers with stable wording (error codes, dates).</p>
+            </div>
+            <div class="bg-stone-50 border border-stone-200 p-4 rounded-lg">
+                <p class="font-semibold text-stone-800">Skip exact match when</p>
+                <p class="text-stone-700 mt-1">Paraphrase-heavy answers — use faithfulness + relevance instead.</p>
+            </div>
+        </div>
+        <h4 class="font-semibold text-stone-800 mb-2">RAG metrics (from M6 — now harnessed)</h4>
+        <div class="overflow-x-auto mb-4">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Metric</th>
+                        <th class="border border-stone-200 p-2">Asks</th>
+                        <th class="border border-stone-200 p-2">Low score means</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Faithfulness</td>
+                        <td class="border border-stone-200 p-2">Is the answer supported by retrieved context?</td>
+                        <td class="border border-stone-200 p-2">Hallucination</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Answer relevance</td>
+                        <td class="border border-stone-200 p-2">Does the answer address the question?</td>
+                        <td class="border border-stone-200 p-2">Drift / verbosity</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Context precision</td>
+                        <td class="border border-stone-200 p-2">Are retrieved chunks mostly relevant?</td>
+                        <td class="border border-stone-200 p-2">Noisy retrieval</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Context recall</td>
+                        <td class="border border-stone-200 p-2">Did we retrieve gold evidence?</td>
+                        <td class="border border-stone-200 p-2">Missing chunks</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <p class="text-sm text-stone-600 mb-4">Pin: embed model, retriever <code class="bg-stone-100 px-1 rounded">k</code>, prompt version, judge model. Your <code class="bg-stone-100 px-1 rounded">m6-baseline.md</code> and <code class="bg-stone-100 px-1 rounded">m7-upgrade.md</code> become <strong>baseline rows</strong> in the harness config.</p>
+        <h4 class="font-semibold text-stone-800 mb-2">Agent metrics (from M8–M11 traces)</h4>
+        <div class="overflow-x-auto mb-4">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Metric</th>
+                        <th class="border border-stone-200 p-2">Asks</th>
+                        <th class="border border-stone-200 p-2">Source</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Task success</td>
+                        <td class="border border-stone-200 p-2">Did the run meet <code class="bg-stone-100 px-1 rounded text-xs">success_criteria</code>?</td>
+                        <td class="border border-stone-200 p-2">Trace + rubric</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Tool selection accuracy</td>
+                        <td class="border border-stone-200 p-2">Right tools called in sensible order?</td>
+                        <td class="border border-stone-200 p-2">Trace <code class="bg-stone-100 px-1 rounded text-xs">tool_calls</code></td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Tool argument validity</td>
+                        <td class="border border-stone-200 p-2">Args parse and pass schema?</td>
+                        <td class="border border-stone-200 p-2">Tool registry logs</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Steps to completion</td>
+                        <td class="border border-stone-200 p-2">Loop efficiency</td>
+                        <td class="border border-stone-200 p-2"><code class="bg-stone-100 px-1 rounded text-xs">step_count</code> in trace</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Cost / latency</td>
+                        <td class="border border-stone-200 p-2">$ and p95 per task</td>
+                        <td class="border border-stone-200 p-2">Token usage aggregation</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm"><code>def agent_success(trace: dict, criteria: dict) -&gt; bool:
+    tools_used = {t["name"] for t in trace.get("tool_calls", [])}
+    if criteria.get("must_call_tools"):
+        if not set(criteria["must_call_tools"]).issubset(tools_used):
+            return False
+    if trace.get("step_count", 99) &gt; criteria.get("max_steps", 99):
+        return False
+    if trace.get("cost_usd", 0) &gt; criteria.get("max_cost_usd", 1.0):
+        return False
+    return trace.get("status") == "completed"</code></pre>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">12.5 Tooling Landscape</h3>
+        <div class="overflow-x-auto mb-4">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Tool</th>
+                        <th class="border border-stone-200 p-2">Strength</th>
+                        <th class="border border-stone-200 p-2">Typical use in this course</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">promptfoo</td>
+                        <td class="border border-stone-200 p-2">Prompt/model matrix, CI YAML, red-team hooks</td>
+                        <td class="border border-stone-200 p-2">Regression grids across prompt versions</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">RAGAS</td>
+                        <td class="border border-stone-200 p-2">RAG faithfulness, context precision/recall</td>
+                        <td class="border border-stone-200 p-2">M6/M7 scorecards</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">DeepEval</td>
+                        <td class="border border-stone-200 p-2">LLM metrics + custom GEval judges</td>
+                        <td class="border border-stone-200 p-2">Task success, hallucination checks</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">LangSmith / Langfuse</td>
+                        <td class="border border-stone-200 p-2">Traces, datasets, online feedback</td>
+                        <td class="border border-stone-200 p-2">Connect agent traces to eval rows</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Braintrust</td>
+                        <td class="border border-stone-200 p-2">Experiments, diff views, production logging</td>
+                        <td class="border border-stone-200 p-2">Before/after promotion decisions</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <p class="text-stone-700 mb-3">You do not need all five. The mini project requires <strong>one offline runner</strong> (RAGAS or DeepEval) <strong>plus</strong> promptfoo or a thin custom CLI that fails on threshold breach.</p>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm mb-4"><code># promptfoo — sketch (see promptfoo docs for current schema)
+description: M6 RAG regression
+prompts:
+  - file://prompts/docs-rag-v3.txt
+  - file://prompts/docs-rag-v4.txt
+providers:
+  - id: openai:gpt-4o-mini
+tests:
+  - vars:
+      question: "How do we rollback a failed Railway deploy?"
+    assert:
+      - type: contains
+        value: "revert-failed-deploy"</code></pre>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+            <div class="bg-emerald-50 border border-emerald-200 p-4 rounded-lg">
+                <p class="font-semibold text-emerald-900">Use LangSmith when</p>
+                <p class="text-emerald-800 mt-1">Team is already on LangChain/LangGraph and wants native trace→dataset flow.</p>
+            </div>
+            <div class="bg-stone-50 border border-stone-200 p-4 rounded-lg">
+                <p class="font-semibold text-stone-800">Use Langfuse when</p>
+                <p class="text-stone-700 mt-1">Framework-agnostic tracing and self-hosting matter. Skip both initially when JSON trace files + a Python eval script are enough for the harness MVP.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Day 2 -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <p class="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-2">Day 2 — CI regression, online eval, and LLM judges</p>
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">12.6 Building the Evaluation Harness</h3>
+        <div class="flex flex-wrap items-center justify-center gap-2 text-center text-sm mb-4">
+            <div class="bg-indigo-50 px-3 py-2 rounded-lg border border-indigo-100 font-medium text-indigo-900">evals/golden/v1.jsonl</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-purple-50 px-3 py-2 rounded-lg border border-purple-100 font-medium text-purple-900">Eval Runner</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-amber-50 px-3 py-2 rounded-lg border border-amber-100 font-medium text-amber-900">RAGAS + Agent + promptfoo</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-100 font-medium text-emerald-900">Scorecard MD/JSON</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-stone-50 px-3 py-2 rounded-lg border border-stone-200 font-medium text-stone-800">CI Threshold Gate</div>
+        </div>
+        <p class="text-stone-700 mb-3"><strong>Harness responsibilities:</strong></p>
+        <ol class="list-decimal pl-5 text-stone-700 space-y-2 mb-4 text-sm">
+            <li>Load golden set + config (<code class="bg-stone-100 px-1 rounded">evals/config.yaml</code>: models, prompts, thresholds).</li>
+            <li>Invoke the app (RAG API, agent endpoint) or replay cached traces.</li>
+            <li>Compute metrics per row and aggregate.</li>
+            <li>Write Markdown + JSON scorecard with git SHA and config hash.</li>
+            <li>Exit non-zero if any <strong>gate</strong> metric drops below baseline − tolerance.</li>
+        </ol>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm"><code># evals/run.py — structural sketch
+import sys
+from pathlib import Path
+
+GATES = {
+    "faithfulness": {"baseline": 0.81, "min_delta": -0.03},
+    "agent_task_success_rate": {"baseline": 0.75, "min_delta": -0.05},
+}
+
+def main() -&gt; int:
+    scorecard = run_all_suites()  # rag, agent, optional promptfoo
+    write_report(scorecard, Path("evals/reports/latest.md"))
+    for metric, gate in GATES.items():
+        if scorecard[metric] &lt; gate["baseline"] + gate["min_delta"]:
+            print(f"FAIL: {metric} = {scorecard[metric]}")
+            return 1
+    return 0
+
+if __name__ == "__main__":
+    raise SystemExit(main())</code></pre>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">12.7 CI Regression Gates</h3>
+        <div class="overflow-x-auto mb-4">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Gate type</th>
+                        <th class="border border-stone-200 p-2">Blocks merge when</th>
+                        <th class="border border-stone-200 p-2">Cost</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Smoke</td>
+                        <td class="border border-stone-200 p-2">5–10 golden rows; fast judges</td>
+                        <td class="border border-stone-200 p-2">Low — every PR</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Full offline</td>
+                        <td class="border border-stone-200 p-2">Complete golden set</td>
+                        <td class="border border-stone-200 p-2">Medium — nightly or release branch</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Adversarial</td>
+                        <td class="border border-stone-200 p-2">Injection/PII cases fail (M13)</td>
+                        <td class="border border-stone-200 p-2">Medium — weekly</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm mb-4"><code># .github/workflows/eval.yml — sketch
+name: eval-regression
+on:
+  pull_request:
+    paths: ['prompts/**', 'retrieval/**', 'agent/**', 'evals/**']
+jobs:
+  eval-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install -r requirements.txt
+      - run: python evals/run.py --suite smoke --fail-on-regression</code></pre>
+        <p class="text-stone-700 mb-3 text-sm"><strong>Pin secrets and models in CI</strong> — use the same judge model version as local runs. Document <code class="bg-stone-100 px-1 rounded">EVAL_MODEL=gpt-4o-mini</code> in README.</p>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+            <div class="bg-emerald-50 border border-emerald-200 p-4 rounded-lg">
+                <p class="font-semibold text-emerald-900">Use CI gates when</p>
+                <p class="text-emerald-800 mt-1">Golden set exists and flake rate is controlled (temperature 0 for judges, fixed seeds where possible).</p>
+            </div>
+            <div class="bg-stone-50 border border-stone-200 p-4 rounded-lg">
+                <p class="font-semibold text-stone-800">Skip CI gates when</p>
+                <p class="text-stone-700 mt-1">Eval is flaky because judges disagree run-to-run — fix judge design first, not the gate.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">12.8 Offline vs Online Evaluation</h3>
+        <div class="overflow-x-auto mb-4">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Mode</th>
+                        <th class="border border-stone-200 p-2">When</th>
+                        <th class="border border-stone-200 p-2">What you learn</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Offline</td>
+                        <td class="border border-stone-200 p-2">Pre-deploy; golden set</td>
+                        <td class="border border-stone-200 p-2">Regressions, component swaps, prompt diffs</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Online A/B</td>
+                        <td class="border border-stone-200 p-2">Post-deploy; live traffic</td>
+                        <td class="border border-stone-200 p-2">Real user phrasing, latency, engagement</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Human review queue</td>
+                        <td class="border border-stone-200 p-2">Sampled production</td>
+                        <td class="border border-stone-200 p-2">Subtle quality, tone, trust</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <p class="text-stone-700 mb-4 text-sm">Offline eval is your <strong>contract</strong>. Online A/B is your <strong>reality check</strong> — golden sets are always narrower than production.</p>
+        <div class="flex flex-wrap items-center justify-center gap-2 text-center text-sm mb-4">
+            <div class="bg-indigo-50 px-3 py-2 rounded-lg border border-indigo-100 font-medium text-indigo-900">Offline golden CI</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-purple-50 px-3 py-2 rounded-lg border border-purple-100 font-medium text-purple-900">Canary 5%</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-amber-50 px-3 py-2 rounded-lg border border-amber-100 font-medium text-amber-900">A/B metrics</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-100 font-medium text-emerald-900">Promote or rollback</div>
+        </div>
+        <p class="text-stone-700 mb-2 text-sm">Online metrics to watch alongside offline gates:</p>
+        <ul class="list-disc pl-5 text-stone-700 space-y-1 text-sm">
+            <li>Thumbs down / escalation rate</li>
+            <li>Refusal rate (too high = retrieval broken; too low = maybe hallucinating)</li>
+            <li>Cost per session and p95 latency</li>
+            <li>Citation click-through (are users checking sources?)</li>
+        </ul>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">12.9 LLM-as-Judge: Power and Pitfalls</h3>
+        <p class="text-stone-700 mb-4">Most RAG and agent metrics use an LLM to score another LLM. Treat judges as <strong>instruments</strong>, not oracles.</p>
+        <div class="overflow-x-auto mb-4">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Pitfall</th>
+                        <th class="border border-stone-200 p-2">Symptom</th>
+                        <th class="border border-stone-200 p-2">Mitigation</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Position bias</td>
+                        <td class="border border-stone-200 p-2">Prefers first answer in pairwise compare</td>
+                        <td class="border border-stone-200 p-2">Swap order; aggregate both</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Leniency drift</td>
+                        <td class="border border-stone-200 p-2">Scores inflate after judge model upgrade</td>
+                        <td class="border border-stone-200 p-2">Re-baseline; keep human anchor set</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Rubric vagueness</td>
+                        <td class="border border-stone-200 p-2">High variance run-to-run</td>
+                        <td class="border border-stone-200 p-2">Structured rubric + few-shot judge examples</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Self-preference</td>
+                        <td class="border border-stone-200 p-2">Same family model rates itself higher</td>
+                        <td class="border border-stone-200 p-2">Use different judge provider</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Cost blindness</td>
+                        <td class="border border-stone-200 p-2">Judge costs exceed generation</td>
+                        <td class="border border-stone-200 p-2">Cache judgments; sample subsets in CI</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm mb-4"><code>JUDGE_PROMPT = """Score faithfulness 1-5.
+1 = unsupported claims present
+5 = every claim traceable to CONTEXT
+Return JSON: {{"score": int, "reason": str}}
+
+QUESTION: {question}
+CONTEXT: {context}
+ANSWER: {answer}
+"""
+
+def faithfulness_judge(llm, row: dict) -&gt; dict:
+    raw = llm.complete(JUDGE_PROMPT.format(**row))
+    return json.loads(raw)  # validate schema in production</code></pre>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+            <div class="bg-emerald-50 border border-emerald-200 p-4 rounded-lg">
+                <p class="font-semibold text-emerald-900">Use LLM judges when</p>
+                <p class="text-emerald-800 mt-1">Semantic judgments (faithfulness, helpfulness) at scale.</p>
+            </div>
+            <div class="bg-stone-50 border border-stone-200 p-4 rounded-lg">
+                <p class="font-semibold text-stone-800">Skip LLM judges when</p>
+                <p class="text-stone-700 mt-1">Deterministic checks suffice — citation allowlists, JSON schema, regex for policy IDs. Always keep a <strong>human-labeled anchor set</strong> (20–30 rows) to calibrate judge drift monthly.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Decision guide -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">Engineering Decision Guide</h3>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Decision</th>
+                        <th class="border border-stone-200 p-2">Guidance</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Golden set size</td>
+                        <td class="border border-stone-200 p-2">Start 30–50 RAG + 15–25 agent; grow from production failures</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">CI smoke vs full</td>
+                        <td class="border border-stone-200 p-2">Smoke on PR; full suite nightly</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Baseline source</td>
+                        <td class="border border-stone-200 p-2"><code class="bg-stone-100 px-1 rounded text-xs">m6-baseline.md</code> for RAG; M8 trace exports for agent</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Judge model</td>
+                        <td class="border border-stone-200 p-2">Pin version; temperature 0; document in scorecard</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Threshold</td>
+                        <td class="border border-stone-200 p-2">Baseline − 3–5 pts on primary metric, not arbitrary 0.9</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Trace linkage</td>
+                        <td class="border border-stone-200 p-2">Every eval row stores <code class="bg-stone-100 px-1 rounded text-xs">trace_id</code> or inline retrieval snapshot</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Failure modes -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">Failure Modes &amp; Diagnostics</h3>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Failure</th>
+                        <th class="border border-stone-200 p-2">Cause</th>
+                        <th class="border border-stone-200 p-2">Fix</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">CI always red</td>
+                        <td class="border border-stone-200 p-2">Threshold too tight or flaky judge</td>
+                        <td class="border border-stone-200 p-2">Widen tolerance; fix judge rubric</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">CI always green</td>
+                        <td class="border border-stone-200 p-2">Smoke set too easy</td>
+                        <td class="border border-stone-200 p-2">Add production-sampled failures</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Offline up, users complain</td>
+                        <td class="border border-stone-200 p-2">Golden set stale</td>
+                        <td class="border border-stone-200 p-2">Sample live queries into v2</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Agent success 100%, bad reports</td>
+                        <td class="border border-stone-200 p-2">Success criteria too weak</td>
+                        <td class="border border-stone-200 p-2">Add must-cite and critic rubric</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">RAGAS slow in CI</td>
+                        <td class="border border-stone-200 p-2">Full set + heavy judge</td>
+                        <td class="border border-stone-200 p-2">Smoke subset; cache retrieval contexts</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Labs -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">Hands-on Labs</h3>
+        <div class="space-y-4">
+            <div class="border border-stone-200 rounded-lg p-4">
+                <h4 class="font-semibold text-stone-800">Lab 12.1 — Unify golden sets</h4>
+                <ol class="list-decimal pl-5 text-sm text-stone-700 mt-2 space-y-1">
+                    <li>Merge M6 RAG golden JSONL and M8/M11 agent tasks into <code class="bg-stone-100 px-1 rounded">evals/golden/v1.jsonl</code> with <code class="bg-stone-100 px-1 rounded">type</code> field.</li>
+                    <li>Tag rows by difficulty and component (rag, agent).</li>
+                    <li>Document coverage gaps in <code class="bg-stone-100 px-1 rounded">evals/README.md</code>.</li>
+                </ol>
+                <p class="text-xs text-emerald-700 mt-2"><strong>Done when:</strong> ≥ 40 RAG rows and ≥ 15 agent rows (or documented corpus limits); no duplicate ids; schema validated.</p>
+            </div>
+            <div class="border border-stone-200 rounded-lg p-4">
+                <h4 class="font-semibold text-stone-800">Lab 12.2 — RAG regression runner</h4>
+                <ol class="list-decimal pl-5 text-sm text-stone-700 mt-2 space-y-1">
+                    <li>Run RAGAS (or equivalent) on full RAG subset.</li>
+                    <li>Compare output to <code class="bg-stone-100 px-1 rounded">m6-baseline.md</code> and <code class="bg-stone-100 px-1 rounded">m7-upgrade.md</code>.</li>
+                    <li>Fail if faithfulness drops &gt; 0.03 below M7 best.</li>
+                </ol>
+                <p class="text-xs text-emerald-700 mt-2"><strong>Done when:</strong> <code class="bg-stone-100 px-1 rounded">evals/reports/m12-rag.md</code> with pinned models and prompt version; one-paragraph interpretation of any metric regression.</p>
+            </div>
+            <div class="border border-stone-200 rounded-lg p-4">
+                <h4 class="font-semibold text-stone-800">Lab 12.3 — Agent trace scoring</h4>
+                <ol class="list-decimal pl-5 text-sm text-stone-700 mt-2 space-y-1">
+                    <li>Export three M8 Research Assistant traces (success, tool error, budget exceeded).</li>
+                    <li>Implement <code class="bg-stone-100 px-1 rounded">agent_success()</code> against <code class="bg-stone-100 px-1 rounded">success_criteria</code>.</li>
+                    <li>Add tool selection accuracy check (expected vs actual tool sets).</li>
+                </ol>
+                <p class="text-xs text-emerald-700 mt-2"><strong>Done when:</strong> scoring script passes on labeled traces; false positive/negative noted for one edge case.</p>
+            </div>
+            <div class="border border-stone-200 rounded-lg p-4">
+                <h4 class="font-semibold text-stone-800">Lab 12.4 — CI smoke gate</h4>
+                <ol class="list-decimal pl-5 text-sm text-stone-700 mt-2 space-y-1">
+                    <li>Add <code class="bg-stone-100 px-1 rounded">evals/run.py --suite smoke</code> with 10 golden rows.</li>
+                    <li>Wire GitHub Actions (or local pre-push hook) to fail on regression.</li>
+                    <li>Document required env vars in project README.</li>
+                </ol>
+                <p class="text-xs text-emerald-700 mt-2"><strong>Done when:</strong> intentional prompt regression fails CI; revert restores green.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mini project -->
+    <div class="bg-white p-6 rounded-lg shadow-md border-2 border-indigo-200">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-2">Mini Project — Evaluation Harness</h3>
+        <p class="text-stone-700 mb-4">
+            A repo-local evaluation harness that runs offline suites for RAG (RAGAS or DeepEval) and agent tasks (trace-based success + cost/step gates),
+            compares against M6/M7 baselines and agent criteria from M8+, writes reproducible scorecards, and provides a CI smoke gate that blocks regressions.
+        </p>
+        <div class="flex flex-wrap items-center justify-center gap-2 text-center text-sm mb-4">
+            <div class="bg-indigo-50 px-3 py-2 rounded-lg border border-indigo-100 font-medium text-indigo-900">evals/config.yaml</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-purple-50 px-3 py-2 rounded-lg border border-purple-100 font-medium text-purple-900">Evaluation Harness</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-amber-50 px-3 py-2 rounded-lg border border-amber-100 font-medium text-amber-900">RAG + Agent Suites</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-100 font-medium text-emerald-900">Scorecard MD/JSON</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-stone-50 px-3 py-2 rounded-lg border border-stone-200 font-medium text-stone-800">CI Gate</div>
+        </div>
+        <h4 class="font-semibold text-stone-800 mb-2">Definition of done</h4>
+        <ul class="space-y-2 text-sm text-stone-700 mb-4">
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> <code class="bg-stone-100 px-1 rounded">evals/golden/v1.jsonl</code> unified with RAG + agent rows</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> <code class="bg-stone-100 px-1 rounded">evals/run.py</code> (or Makefile target) produces <code class="bg-stone-100 px-1 rounded">evals/reports/latest.md</code></li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> CI smoke job fails on deliberate regression and passes on baseline</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> Scorecard pins: git SHA, prompt version, embed model, judge model, retriever config</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> README: how to run locally, required secrets, how to add a golden row</li>
+        </ul>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Criterion</th>
+                        <th class="border border-stone-200 p-2">Weight</th>
+                        <th class="border border-stone-200 p-2">Excellent</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2">Coverage</td>
+                        <td class="border border-stone-200 p-2">30%</td>
+                        <td class="border border-stone-200 p-2">Golden set spans RAG + agent; tags and success criteria are meaningful</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2">Correctness</td>
+                        <td class="border border-stone-200 p-2">35%</td>
+                        <td class="border border-stone-200 p-2">Metrics match definitions; trace linkage works; gates fail when they should</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2">Operability</td>
+                        <td class="border border-stone-200 p-2">35%</td>
+                        <td class="border border-stone-200 p-2">One-command run; CI integrated; baselines documented; judge pitfalls acknowledged</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <p class="text-sm text-stone-500 mt-4">
+            <strong>Bridge to M13:</strong> evaluation tells you when quality drops. It does not stop prompt injection, PII leakage, or an agent from calling a destructive tool.
+            Module 13 hardens the same endpoint with guardrails, red-team suites, and OWASP-aligned controls — then feeds adversarial cases back into this harness.
+            Quality without safety is still not shippable.
+        </p>
+    </div>
+
+    <!-- Footer nav -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <p class="mt-2 text-sm">
+            <a href="#m11" class="text-stone-500 hover:underline">← M11 Multi-Agent Systems</a>
+            <span class="text-stone-300 mx-2">·</span>
+            <a href="#m13" class="text-indigo-600 font-medium hover:underline">Next: M13 — Guardrails, Safety &amp; Security →</a>
+        </p>
+    </div>
+</section>

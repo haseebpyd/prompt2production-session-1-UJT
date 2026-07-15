@@ -1,0 +1,1142 @@
+<section id="m14" class="chapter space-y-8">
+    <header>
+        <p class="text-sm font-semibold uppercase tracking-wide text-indigo-600 mb-2">Part IV — Production AI · Module 14 · 3 days</p>
+        <h2 class="text-4xl font-bold text-stone-900">M14: Deployment, Observability &amp; Reliability</h2>
+        <p class="text-lg text-stone-600 mt-2">
+            Modules 12 and 13 made your system <strong>measurable</strong> and <strong>defensible</strong>. Module 14 makes it <strong>shippable</strong>:
+            a containerized FastAPI service that streams tokens to clients, survives provider outages, respects tenant boundaries,
+            and tells you — in dollars and milliseconds — when something is wrong before users open Slack.
+            Your job is not &ldquo;deploy to the cloud.&rdquo; Your job is <strong>operable AI</strong>.
+        </p>
+        <div class="mt-4 bg-indigo-50 border border-indigo-100 rounded-lg p-4">
+            <p class="text-sm font-semibold text-indigo-900 mb-2">Learning objectives</p>
+            <ul class="list-disc pl-5 text-sm text-indigo-800 space-y-1">
+                <li>Package an AI FastAPI service with Docker, health checks, and cloud-native secrets (Render, Railway, AWS, GCP)</li>
+                <li>Stream LLM output with async SSE, bounded queues, and client disconnect handling</li>
+                <li>Instrument traces with Langfuse or LangSmith and align spans with OpenTelemetry concepts</li>
+                <li>Build cost and latency dashboards, rate limits, and alerting on SLO breaches</li>
+                <li>Implement retries, timeouts, fallbacks, model routing, and circuit breakers for LLM calls</li>
+                <li>Apply semantic/prompt caching, batching, right-sizing, and quantization at an engineering level</li>
+                <li>Operate multi-tenant API keys, CI/CD staged rollouts, and a lightweight incident response playbook</li>
+            </ul>
+        </div>
+    </header>
+
+    <!-- Why this matters -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">Why This Matters in Production</h3>
+        <p class="text-stone-700 mb-4">
+            The production failure mode is familiar: a demo that runs on <code class="bg-stone-100 px-1 rounded">uvicorn</code> with
+            <code class="bg-stone-100 px-1 rounded">OPENAI_API_KEY</code> in a <code class="bg-stone-100 px-1 rounded">.env</code> file,
+            no health checks, no traces, and a 429 storm that takes down the whole app because every retry fires instantly.
+            Secrets hygiene, async SSE with backpressure, observability that ties a user complaint to a span, cost alarms that fire at 80% of budget,
+            and reliability patterns (timeouts, fallbacks, circuit breakers) that degrade gracefully instead of cascading — that is the bar.
+        </p>
+        <p class="text-stone-700">
+            This module produces the <strong>Production Deployment</strong> — the traced, cost-monitored, retry-aware service your capstone runs in a real environment.
+        </p>
+    </div>
+
+    <!-- Day 1 -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <p class="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-2">Day 1 — Service shape, Docker, secrets, and async SSE</p>
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">14.1 The Production Service Contract</h3>
+        <p class="text-stone-700 mb-4">Before choosing Render vs AWS, define what &ldquo;production&rdquo; means for your AI endpoint:</p>
+        <div class="overflow-x-auto mb-4">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Surface</th>
+                        <th class="border border-stone-200 p-2">Responsibility</th>
+                        <th class="border border-stone-200 p-2">Owned artifacts</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">HTTP API</td>
+                        <td class="border border-stone-200 p-2">Auth, validation, rate limits, tenancy</td>
+                        <td class="border border-stone-200 p-2">FastAPI routers, Pydantic models (M3)</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Inference</td>
+                        <td class="border border-stone-200 p-2">Model calls with budgets</td>
+                        <td class="border border-stone-200 p-2">Provider client, routing table</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Streaming</td>
+                        <td class="border border-stone-200 p-2">Token delivery without blocking the event loop</td>
+                        <td class="border border-stone-200 p-2">SSE handler, queue, disconnect cleanup</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Guardrails</td>
+                        <td class="border border-stone-200 p-2">Input/output policy (M13)</td>
+                        <td class="border border-stone-200 p-2">Middleware or graph nodes</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Observability</td>
+                        <td class="border border-stone-200 p-2">Traces, metrics, cost attribution</td>
+                        <td class="border border-stone-200 p-2">Langfuse/LangSmith + OTel hooks</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Ops</td>
+                        <td class="border border-stone-200 p-2">Health, readiness, deploy hooks</td>
+                        <td class="border border-stone-200 p-2"><code class="bg-stone-100 px-1 rounded text-xs">/health</code>, <code class="bg-stone-100 px-1 rounded text-xs">/ready</code>, Dockerfile</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="flex flex-wrap items-center justify-center gap-2 text-center text-sm mb-4">
+            <div class="bg-indigo-50 px-3 py-2 rounded-lg border border-indigo-100 font-medium text-indigo-900">Client UI / API</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-purple-50 px-3 py-2 rounded-lg border border-purple-100 font-medium text-purple-900">FastAPI Async</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-amber-50 px-3 py-2 rounded-lg border border-amber-100 font-medium text-amber-900">API Key + Tenant</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-100 font-medium text-emerald-900">M13 Guardrails</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-indigo-50 px-3 py-2 rounded-lg border border-indigo-100 font-medium text-indigo-900">M10 Graph / M6 RAG</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-purple-50 px-3 py-2 rounded-lg border border-purple-100 font-medium text-purple-900">LLM + Cache</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-amber-50 px-3 py-2 rounded-lg border border-amber-100 font-medium text-amber-900">SSE Stream</div>
+        </div>
+        <p class="text-sm text-stone-500">Traces flow to Langfuse/OTel → cost/latency dashboard (parallel to the request path).</p>
+        <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-900 mt-4">
+            <strong>Hand forward from M13:</strong> deploy the <strong>hardened</strong> endpoint — injection tests passed, PII redaction on logs, moderation on output.
+            Do not &ldquo;simplify for deploy&rdquo; and drop guardrails.
+        </div>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">14.2 FastAPI Async + SSE Streaming with Bounded Queues</h3>
+        <p class="text-stone-700 mb-4">
+            Blocking the event loop on long <code class="bg-stone-100 px-1 rounded">llm.complete()</code> calls kills concurrency.
+            Use <strong>async</strong> clients (<code class="bg-stone-100 px-1 rounded">openai.AsyncOpenAI</code>, <code class="bg-stone-100 px-1 rounded">httpx.AsyncClient</code>)
+            and stream tokens through a <strong>bounded queue</strong> so slow clients cannot exhaust memory.
+        </p>
+        <p class="text-stone-700 mb-4"><strong>Pattern:</strong> producer coroutine fills the queue; SSE consumer drains it; on client disconnect, cancel the producer.</p>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm mb-4"><code>import asyncio
+from collections.abc import AsyncIterator
+
+from fastapi import FastAPI, Request
+from fastapi.responses import StreamingResponse
+from sse_starlette.sse import EventSourceResponse
+
+app = FastAPI()
+QUEUE_MAX = 256  # backpressure: producer blocks when client is slow
+
+
+async def token_producer(queue: asyncio.Queue[str | None], prompt: str) -&gt; None:
+    try:
+        async for chunk in stream_llm_tokens(prompt):  # your async generator
+            await queue.put(chunk)
+    except asyncio.CancelledError:
+        raise
+    finally:
+        await queue.put(None)  # sentinel: stream end
+
+
+async def sse_events(queue: asyncio.Queue[str | None], request: Request) -&gt; AsyncIterator[dict]:
+    try:
+        while True:
+            if await request.is_disconnected():
+                break
+            chunk = await asyncio.wait_for(queue.get(), timeout=30.0)
+            if chunk is None:
+                yield {"event": "done", "data": ""}
+                break
+            yield {"event": "token", "data": chunk}
+    finally:
+        pass  # Parent task cancellation happens in the route handler
+
+
+@app.post("/v1/chat/stream")
+async def chat_stream(request: Request, body: ChatRequest):
+    queue: asyncio.Queue[str | None] = asyncio.Queue(maxsize=QUEUE_MAX)
+    producer = asyncio.create_task(token_producer(queue, body.prompt))
+
+    async def wrapped_events():
+        try:
+            async for event in sse_events(queue, request):
+                yield event
+        finally:
+            producer.cancel()
+            try:
+                await producer
+            except asyncio.CancelledError:
+                pass
+
+    return EventSourceResponse(wrapped_events())</code></pre>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm mb-4">
+            <div class="bg-emerald-50 border border-emerald-200 p-4 rounded-lg">
+                <p class="font-semibold text-emerald-900">Use SSE when</p>
+                <p class="text-emerald-800 mt-1">Chat UIs, agent step progress, long generations where TTFB matters.</p>
+            </div>
+            <div class="bg-stone-50 border border-stone-200 p-4 rounded-lg">
+                <p class="font-semibold text-stone-800">Skip SSE when</p>
+                <p class="text-stone-700 mt-1">Batch jobs or internal pipelines — return JSON and poll status.</p>
+            </div>
+        </div>
+        <p class="text-sm text-stone-600"><strong>Queue sizing:</strong> <code class="bg-stone-100 px-1 rounded">maxsize=0</code> is unbounded (dangerous).
+        <code class="bg-stone-100 px-1 rounded">maxsize=64–512</code> is typical; producer <code class="bg-stone-100 px-1 rounded">await queue.put()</code> blocks under backpressure — that is correct behavior.</p>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">14.3 Docker: Multi-Stage Build and Runtime Hygiene</h3>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm mb-4"><code># syntax=docker/dockerfile:1
+FROM python:3.12-slim AS builder
+WORKDIR /app
+COPY pyproject.toml uv.lock ./
+RUN pip install uv &amp;&amp; uv sync --frozen --no-dev
+
+FROM python:3.12-slim AS runtime
+WORKDIR /app
+RUN useradd --create-home appuser
+COPY --from=builder /app/.venv /app/.venv
+COPY src/ ./src/
+ENV PATH="/app/.venv/bin:$PATH" \
+    PYTHONUNBUFFERED=1
+USER appuser
+EXPOSE 8000
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"
+CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]</code></pre>
+        <div class="overflow-x-auto mb-4">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Choice</th>
+                        <th class="border border-stone-200 p-2">Guidance</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Workers</td>
+                        <td class="border border-stone-200 p-2">Start with <strong>1 worker</strong> per container for in-memory agent state; scale <strong>replicas</strong> horizontally. Use 2+ workers only when state is externalized (Redis checkpoint, M10 <code class="bg-stone-100 px-1 rounded text-xs">thread_id</code> store).</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Image size</td>
+                        <td class="border border-stone-200 p-2">Slim base; no dev deps; no corpus files in image — mount object storage or pull at startup.</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Non-root</td>
+                        <td class="border border-stone-200 p-2">Always run as unprivileged user.</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Health vs ready</td>
+                        <td class="border border-stone-200 p-2"><code class="bg-stone-100 px-1 rounded text-xs">/health</code> = process up. <code class="bg-stone-100 px-1 rounded text-xs">/ready</code> = can reach LLM + vector DB + checkpoint backend.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm"><code>@app.get("/health")
+async def health():
+    return {"status": "ok"}
+
+@app.get("/ready")
+async def ready():
+    checks = await asyncio.gather(
+        check_llm_ping(),
+        check_vector_store(),
+        return_exceptions=True,
+    )
+    if any(isinstance(c, Exception) for c in checks):
+        raise HTTPException(status_code=503, detail="dependency_unavailable")
+    return {"status": "ready"}</code></pre>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">14.4 Secrets and Configuration — Never in the Image</h3>
+        <div class="overflow-x-auto mb-4">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Anti-pattern</th>
+                        <th class="border border-stone-200 p-2">Fix</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium"><code class="bg-stone-100 px-1 rounded text-xs">ENV OPENAI_API_KEY=sk-...</code> in Dockerfile</td>
+                        <td class="border border-stone-200 p-2">Inject at runtime from secret store</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Committed <code class="bg-stone-100 px-1 rounded text-xs">.env</code></td>
+                        <td class="border border-stone-200 p-2"><code class="bg-stone-100 px-1 rounded text-xs">.env.example</code> only; real values in platform secrets</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Same key for dev and prod</td>
+                        <td class="border border-stone-200 p-2">Separate keys; separate Langfuse projects</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <p class="text-stone-700 mb-2 text-sm"><strong>Local:</strong> <code class="bg-stone-100 px-1 rounded">.env</code> loaded by <code class="bg-stone-100 px-1 rounded">pydantic-settings</code> — gitignored.</p>
+        <p class="text-stone-700 mb-4 text-sm"><strong>Docker Compose:</strong> <code class="bg-stone-100 px-1 rounded">env_file</code> + Docker secrets for production-like tests.</p>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm mb-4"><code># compose.prod.yml (sketch)
+services:
+  api:
+    image: alrighttech/ai-service:latest
+    secrets:
+      - openai_api_key
+    environment:
+      OPENAI_API_KEY_FILE: /run/secrets/openai_api_key
+secrets:
+  openai_api_key:
+    external: true</code></pre>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm"><code>from pydantic_settings import BaseSettings
+
+class Settings(BaseSettings):
+    openai_api_key: str
+
+    @classmethod
+    def from_env(cls) -&gt; "Settings":
+        key_file = os.environ.get("OPENAI_API_KEY_FILE")
+        if key_file:
+            return cls(openai_api_key=Path(key_file).read_text().strip())
+        return cls()  # falls back to OPENAI_API_KEY env var</code></pre>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">14.5 Cloud Deployment Targets</h3>
+        <p class="text-stone-700 mb-4">Pick based on <strong>ops appetite</strong>, not logo preference.</p>
+        <div class="overflow-x-auto mb-4">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Platform</th>
+                        <th class="border border-stone-200 p-2">Best for</th>
+                        <th class="border border-stone-200 p-2">Secrets</th>
+                        <th class="border border-stone-200 p-2">SSE / long requests</th>
+                        <th class="border border-stone-200 p-2">Serverless fit</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Render</td>
+                        <td class="border border-stone-200 p-2">Fast intern/prototype → staging</td>
+                        <td class="border border-stone-200 p-2">Environment groups + secret files</td>
+                        <td class="border border-stone-200 p-2">Web service — timeout ≥ 300s for agents</td>
+                        <td class="border border-stone-200 p-2">Background workers for ingest</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Railway</td>
+                        <td class="border border-stone-200 p-2">Quick Docker deploy, PR previews</td>
+                        <td class="border border-stone-200 p-2">Project variables (sealed)</td>
+                        <td class="border border-stone-200 p-2">Configure request timeout; streaming-friendly plan</td>
+                        <td class="border border-stone-200 p-2">Jobs for batch eval</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">AWS</td>
+                        <td class="border border-stone-200 p-2">Enterprise, VPC, compliance</td>
+                        <td class="border border-stone-200 p-2">Secrets Manager / SSM Parameter Store</td>
+                        <td class="border border-stone-200 p-2">ECS Fargate or ALB → EC2; <strong>avoid</strong> API Gateway 29s limit for agent SSE</td>
+                        <td class="border border-stone-200 p-2">Lambda for ingest/eval only</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">GCP</td>
+                        <td class="border border-stone-200 p-2">Same enterprise tier</td>
+                        <td class="border border-stone-200 p-2">Secret Manager</td>
+                        <td class="border border-stone-200 p-2">Cloud Run (<code class="bg-stone-100 px-1 rounded text-xs">--timeout</code>, <code class="bg-stone-100 px-1 rounded text-xs">--cpu-boost</code>); GKE for heavy vLLM</td>
+                        <td class="border border-stone-200 p-2">Cloud Functions for webhooks</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-900 mb-4">
+            <strong>Serverless rule of thumb:</strong> use serverless for <strong>stateless, short</strong> work (webhook, nightly eval, document parse).
+            Do <strong>not</strong> put a 40-step LangGraph agent on a 60-second Lambda unless you have stepped async invocation.
+        </div>
+        <div class="flex flex-wrap items-center justify-center gap-2 text-center text-sm">
+            <div class="bg-indigo-50 px-3 py-2 rounded-lg border border-indigo-100 font-medium text-indigo-900">local</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-purple-50 px-3 py-2 rounded-lg border border-purple-100 font-medium text-purple-900">PR preview</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-amber-50 px-3 py-2 rounded-lg border border-amber-100 font-medium text-amber-900">staging</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-100 font-medium text-emerald-900">production (canary 5%)</div>
+        </div>
+        <p class="text-sm text-stone-500 mt-4">Wire M12 eval gate in CI <strong>before</strong> promote to staging.</p>
+    </div>
+
+    <!-- Day 2 -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <p class="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-2">Day 2 — Observability, cost, rate limits, and reliability</p>
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">14.6 Tracing: Langfuse, LangSmith, and OpenTelemetry</h3>
+        <p class="text-stone-700 mb-4">
+            Production needs <strong>one trace per user request</strong> with child spans per LLM call, retrieval, and tool —
+            searchable by <code class="bg-stone-100 px-1 rounded">tenant_id</code>, <code class="bg-stone-100 px-1 rounded">session_id</code>, and <code class="bg-stone-100 px-1 rounded">prompt_version</code>.
+        </p>
+        <div class="overflow-x-auto mb-4">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Concept</th>
+                        <th class="border border-stone-200 p-2">OTel term</th>
+                        <th class="border border-stone-200 p-2">LLM observability term</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">One user request</td>
+                        <td class="border border-stone-200 p-2">Trace</td>
+                        <td class="border border-stone-200 p-2">Trace / session</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">LLM call</td>
+                        <td class="border border-stone-200 p-2">Span</td>
+                        <td class="border border-stone-200 p-2">Generation</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Retrieval</td>
+                        <td class="border border-stone-200 p-2">Span</td>
+                        <td class="border border-stone-200 p-2">Span with <code class="bg-stone-100 px-1 rounded text-xs">retrieval</code> type</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Key-value context</td>
+                        <td class="border border-stone-200 p-2">Span attributes</td>
+                        <td class="border border-stone-200 p-2"><code class="bg-stone-100 px-1 rounded text-xs">user_id</code>, <code class="bg-stone-100 px-1 rounded text-xs">model</code>, <code class="bg-stone-100 px-1 rounded text-xs">token_count</code></td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Aggregated numbers</td>
+                        <td class="border border-stone-200 p-2">Metrics</td>
+                        <td class="border border-stone-200 p-2">Cost dashboard, p95 latency</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <p class="text-stone-700 mb-4 text-sm">
+            <strong>Langfuse</strong> (open source): strong for LLM-native views — prompt versions, eval scores linked to traces, cost per trace.
+            <strong>LangSmith</strong> (LangChain ecosystem): excellent if your graph is already LangChain/LangGraph.
+            <strong>Pick one for the course.</strong>
+        </p>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm mb-4"><code># Pseudocode — Langfuse drop-in around an LLM call
+from langfuse.decorators import observe, langfuse_context
+
+@observe()
+async def generate_answer(prompt: str, tenant_id: str) -&gt; str:
+    langfuse_context.update_current_trace(
+        user_id=tenant_id,
+        metadata={"prompt_version": "v3.2"},
+    )
+    response = await client.chat.completions.create(...)
+    langfuse_context.update_current_observation(
+        model=response.model,
+        usage=response.usage,
+    )
+    return response.choices[0].message.content</code></pre>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Log</th>
+                        <th class="border border-stone-200 p-2">Never log raw</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2">Trace IDs, latencies, token counts, model id</td>
+                        <td class="border border-stone-200 p-2">API keys, full prompts with PII</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2">Retrieval <code class="bg-stone-100 px-1 rounded text-xs">chunk_id</code> list</td>
+                        <td class="border border-stone-200 p-2">Full document bodies in prod logs</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2">Guardrail decision (allow/block)</td>
+                        <td class="border border-stone-200 p-2">User medical/financial verbatim (M13 redaction)</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">14.7 Cost and Latency Dashboards</h3>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm mb-4"><code>@dataclass
+class UsageRecord:
+    tenant_id: str
+    trace_id: str
+    model: str
+    input_tokens: int
+    output_tokens: int
+    latency_ms: float
+    usd_estimate: float</code></pre>
+        <div class="overflow-x-auto mb-4">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Metric</th>
+                        <th class="border border-stone-200 p-2">Type</th>
+                        <th class="border border-stone-200 p-2">Alert threshold (example)</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium"><code class="bg-stone-100 px-1 rounded text-xs">llm.usd_per_hour</code></td>
+                        <td class="border border-stone-200 p-2">Gauge / rollup</td>
+                        <td class="border border-stone-200 p-2">&gt; 80% of daily budget by 2pm</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium"><code class="bg-stone-100 px-1 rounded text-xs">llm.p95_latency_ms</code></td>
+                        <td class="border border-stone-200 p-2">Histogram</td>
+                        <td class="border border-stone-200 p-2">&gt; 8s for 5m (SSE TTFB + total)</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium"><code class="bg-stone-100 px-1 rounded text-xs">llm.error_rate</code></td>
+                        <td class="border border-stone-200 p-2">Counter ratio</td>
+                        <td class="border border-stone-200 p-2">&gt; 2% 5xx or provider errors</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium"><code class="bg-stone-100 px-1 rounded text-xs">cache.hit_rate</code></td>
+                        <td class="border border-stone-200 p-2">Gauge</td>
+                        <td class="border border-stone-200 p-2">&lt; 20% when expected 40%+ (broken cache)</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium"><code class="bg-stone-100 px-1 rounded text-xs">rate_limit.violations</code></td>
+                        <td class="border border-stone-200 p-2">Counter</td>
+                        <td class="border border-stone-200 p-2">Spike → possible abuse</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm"><code>PRICING_PER_1M = {"gpt-4o-mini": {"in": 0.15, "out": 0.60}}
+
+def estimate_usd(model: str, inp: int, out: int) -&gt; float:
+    p = PRICING_PER_1M[model]
+    return (inp * p["in"] + out * p["out"]) / 1_000_000</code></pre>
+        <p class="text-sm text-stone-600 mt-2">Attribute cost to <code class="bg-stone-100 px-1 rounded">tenant_id</code> and <code class="bg-stone-100 px-1 rounded">feature</code> (<code class="bg-stone-100 px-1 rounded">rag_qa</code>, <code class="bg-stone-100 px-1 rounded">agent_research</code>, <code class="bg-stone-100 px-1 rounded">m11_pipeline</code>).</p>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">14.8 Rate Limiting and Abuse Controls</h3>
+        <p class="text-stone-700 mb-4">AI endpoints are magnet targets for credential stuffing and token burn attacks.</p>
+        <div class="overflow-x-auto mb-4">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Layer</th>
+                        <th class="border border-stone-200 p-2">Mechanism</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Edge</td>
+                        <td class="border border-stone-200 p-2">Cloudflare / API Gateway throttle by IP</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">App</td>
+                        <td class="border border-stone-200 p-2">Token bucket per API key + per tenant</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Model</td>
+                        <td class="border border-stone-200 p-2">Max <code class="bg-stone-100 px-1 rounded text-xs">max_tokens</code>, max requests/day per tier</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Agent</td>
+                        <td class="border border-stone-200 p-2">M8 step cap, M10 graph recursion limit — still required in prod</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm mb-4"><code>from slowapi import Limiter
+from slowapi.util import get_remote_address
+
+limiter = Limiter(key_func=get_remote_address)
+
+@app.post("/v1/chat")
+@limiter.limit("30/minute")
+async def chat(...):
+    ...</code></pre>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Tier</th>
+                        <th class="border border-stone-200 p-2">RPM</th>
+                        <th class="border border-stone-200 p-2">Tokens/day</th>
+                        <th class="border border-stone-200 p-2">Features</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium"><code class="bg-stone-100 px-1 rounded text-xs">free</code></td>
+                        <td class="border border-stone-200 p-2">10</td>
+                        <td class="border border-stone-200 p-2">50k</td>
+                        <td class="border border-stone-200 p-2">RAG only</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium"><code class="bg-stone-100 px-1 rounded text-xs">team</code></td>
+                        <td class="border border-stone-200 p-2">60</td>
+                        <td class="border border-stone-200 p-2">500k</td>
+                        <td class="border border-stone-200 p-2">Agent + SSE</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium"><code class="bg-stone-100 px-1 rounded text-xs">enterprise</code></td>
+                        <td class="border border-stone-200 p-2">Custom</td>
+                        <td class="border border-stone-200 p-2">Custom</td>
+                        <td class="border border-stone-200 p-2">Dedicated index, SLA</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <p class="text-sm text-stone-600 mt-4">Return <code class="bg-stone-100 px-1 rounded">429</code> with <code class="bg-stone-100 px-1 rounded">Retry-After</code> header — clients and retry logic depend on it.</p>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">14.9 Retries, Timeouts, Fallbacks, Routing, Circuit Breakers</h3>
+        <p class="text-stone-700 mb-4"><strong>Retries:</strong> idempotent reads and <strong>safe</strong> transient failures only (429, 502, 503). Never blind-retry 400s.</p>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm mb-4"><code>import tenacity
+
+@tenacity.retry(
+    retry=tenacity.retry_if_exception_type(TransientProviderError),
+    wait=tenacity.wait_exponential_jitter(initial=1, max=30),
+    stop=tenacity.stop_after_attempt(4),
+    reraise=True,
+)
+async def chat_with_retry(**kwargs):
+    return await client.chat.completions.create(**kwargs)</code></pre>
+        <p class="text-stone-700 mb-2 text-sm"><strong>Timeouts:</strong> set at every hop — HTTP client (30s), single LLM call (60s), full agent request (180s), SSE idle (120s).</p>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm mb-4"><code>timeout = httpx.Timeout(connect=5.0, read=60.0, write=10.0, pool=5.0)</code></pre>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm mb-4"><code>async def routed_completion(messages, complexity: str):
+    primary = "gpt-4o" if complexity == "high" else "gpt-4o-mini"
+    try:
+        return await call_model(primary, messages)
+    except TransientProviderError:
+        return await call_model("gpt-4o-mini", messages)  # downgrade</code></pre>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm mb-4"><code>class CircuitBreaker:
+    def __init__(self, failure_threshold: int = 5, cooldown_s: float = 60.0):
+        self.failures = 0
+        self.threshold = failure_threshold
+        self.cooldown_s = cooldown_s
+        self.open_until: float = 0.0
+
+    def record_success(self):
+        self.failures = 0
+
+    def record_failure(self):
+        self.failures += 1
+        if self.failures &gt;= self.threshold:
+            self.open_until = time.monotonic() + self.cooldown_s
+
+    def allow(self) -&gt; bool:
+        return time.monotonic() &gt;= self.open_until</code></pre>
+        <div class="flex flex-wrap items-center justify-center gap-2 text-center text-sm">
+            <div class="bg-indigo-50 px-3 py-2 rounded-lg border border-indigo-100 font-medium text-indigo-900">Request</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-purple-50 px-3 py-2 rounded-lg border border-purple-100 font-medium text-purple-900">Circuit open?</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-amber-50 px-3 py-2 rounded-lg border border-amber-100 font-medium text-amber-900">Degrade / cache</div>
+            <span class="text-stone-400">|</span>
+            <div class="bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-100 font-medium text-emerald-900">Route → retry → fallback</div>
+        </div>
+        <p class="text-sm text-stone-600 mt-4">When open: return cached answer, static degradation message, or queue for async — <strong>never</strong> hang until timeout.</p>
+    </div>
+
+    <!-- Day 3 -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <p class="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-2">Day 3 — Efficiency, tenancy, CI/CD, and operations</p>
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">14.10 Semantic Cache and Prompt Cache</h3>
+        <div class="overflow-x-auto mb-4">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Cache type</th>
+                        <th class="border border-stone-200 p-2">Key</th>
+                        <th class="border border-stone-200 p-2">Hits when</th>
+                        <th class="border border-stone-200 p-2">Invalidation</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Exact prompt cache</td>
+                        <td class="border border-stone-200 p-2">Hash of (model, system prompt, messages)</td>
+                        <td class="border border-stone-200 p-2">Identical request</td>
+                        <td class="border border-stone-200 p-2">TTL (e.g., 1h) or prompt version bump</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Semantic cache</td>
+                        <td class="border border-stone-200 p-2">Embedding of user question</td>
+                        <td class="border border-stone-200 p-2">Paraphrase similar enough</td>
+                        <td class="border border-stone-200 p-2">Lower similarity threshold → more false hits</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Retrieval cache</td>
+                        <td class="border border-stone-200 p-2">Hash of (query, collection, filters)</td>
+                        <td class="border border-stone-200 p-2">Same search</td>
+                        <td class="border border-stone-200 p-2">Corpus version change</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm mb-4"><code>async def answer_with_semantic_cache(question: str, embed_fn, store, threshold: float = 0.92):
+    q_vec = embed_fn(question)
+    hit = store.search_nearest("answer_cache", q_vec, top_k=1)
+    if hit and hit.score &gt;= threshold:
+        return hit.metadata["answer"], {"cache": "semantic_hit"}
+    answer = await generate_fresh(question)
+    store.upsert("answer_cache", [VectorRecord(...)])
+    return answer, {"cache": "miss"}</code></pre>
+        <div class="bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-900">
+            <strong>Guardrail interaction:</strong> do not cache blocked or PII-heavy turns. Cache key must include <code class="bg-stone-100 px-1 rounded">tenant_id</code> — <strong>no cross-tenant cache leakage</strong>.
+            Provider prompt caching: structure prompts with <strong>static prefix first</strong>, volatile user content last.
+        </div>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">14.11 Batching, Right-Sizing, and Quantization</h3>
+        <div class="overflow-x-auto mb-4">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Lever</th>
+                        <th class="border border-stone-200 p-2">Effect</th>
+                        <th class="border border-stone-200 p-2">Caveat</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Batch embed (ingest)</td>
+                        <td class="border border-stone-200 p-2">Higher throughput per dollar</td>
+                        <td class="border border-stone-200 p-2">Latency insensitive path only</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Smaller chat model</td>
+                        <td class="border border-stone-200 p-2">Largest recurring savings after retrieval stabilizes</td>
+                        <td class="border border-stone-200 p-2">Eval regression — run M12 gate</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Lower <code class="bg-stone-100 px-1 rounded text-xs">max_tokens</code></td>
+                        <td class="border border-stone-200 p-2">Caps runaway agents</td>
+                        <td class="border border-stone-200 p-2">May truncate valid answers</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Quantization (AWQ/GPTQ)</td>
+                        <td class="border border-stone-200 p-2">Cheaper self-hosted inference</td>
+                        <td class="border border-stone-200 p-2">Quality eval on your tasks</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Right-size context</td>
+                        <td class="border border-stone-200 p-2">Fewer input tokens</td>
+                        <td class="border border-stone-200 p-2">M6/M7 context packing discipline</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Signal</th>
+                        <th class="border border-stone-200 p-2">Managed API</th>
+                        <th class="border border-stone-200 p-2">vLLM / Ollama self-host</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Volume</td>
+                        <td class="border border-stone-200 p-2">Low / spiky</td>
+                        <td class="border border-stone-200 p-2">Sustained high token volume</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Model needs</td>
+                        <td class="border border-stone-200 p-2">Frontier models, low ops</td>
+                        <td class="border border-stone-200 p-2">Open weights, data residency</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Team</td>
+                        <td class="border border-stone-200 p-2">No GPU ops</td>
+                        <td class="border border-stone-200 p-2">Someone can patch CUDA at 2am</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Latency</td>
+                        <td class="border border-stone-200 p-2">OK with network hop</td>
+                        <td class="border border-stone-200 p-2">Need in-VPC inference</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <p class="text-sm text-stone-500 mt-4"><strong>Course default:</strong> managed APIs for capstone unless you already run GPUs. Ollama: local dev. vLLM: production throughput with OpenAI-compatible <code class="bg-stone-100 px-1 rounded">/v1</code>.</p>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">14.12 Multi-Tenancy and API Keys</h3>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm mb-4"><code>async def get_tenant(request: Request) -&gt; Tenant:
+    api_key = request.headers.get("X-API-Key")
+    tenant = await resolve_tenant(api_key)  # hashed lookup
+    if not tenant:
+        raise HTTPException(401)
+    return tenant
+
+# Every store call:
+hits = store.search(collection="docs", query_vec=vec, filters={"tenant_id": tenant.id})</code></pre>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Practice</th>
+                        <th class="border border-stone-200 p-2">Why</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Hash API keys at rest</td>
+                        <td class="border border-stone-200 p-2">DB leak ≠ usable keys</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Prefix keys (<code class="bg-stone-100 px-1 rounded text-xs">at_live_...</code>)</td>
+                        <td class="border border-stone-200 p-2">Humans recognize prod vs test</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Rotate without downtime</td>
+                        <td class="border border-stone-200 p-2">Support two valid hashes per tenant during rotation</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Per-tenant eval slices</td>
+                        <td class="border border-stone-200 p-2">M12 regression per customer corpus</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">14.13 CI/CD and Staged Rollout</h3>
+        <div class="flex flex-wrap items-center justify-center gap-2 text-center text-sm mb-4">
+            <div class="bg-indigo-50 px-3 py-2 rounded-lg border border-indigo-100 font-medium text-indigo-900">PR open</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-purple-50 px-3 py-2 rounded-lg border border-purple-100 font-medium text-purple-900">CI + M12 eval</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-amber-50 px-3 py-2 rounded-lg border border-amber-100 font-medium text-amber-900">Preview deploy</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-100 font-medium text-emerald-900">Staging smoke</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-indigo-50 px-3 py-2 rounded-lg border border-indigo-100 font-medium text-indigo-900">Canary 5%</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-100 font-medium text-emerald-900">Full rollout</div>
+        </div>
+        <ol class="list-decimal pl-5 text-stone-700 space-y-2 mb-4 text-sm">
+            <li>Unit tests + lint.</li>
+            <li>M12 eval harness on golden set — <strong>fail PR if primary metric drops</strong>.</li>
+            <li>Build Docker image; scan for secrets (gitleaks).</li>
+            <li>Deploy preview; hit <code class="bg-stone-100 px-1 rounded">/ready</code> and one streaming smoke test.</li>
+        </ol>
+        <p class="text-sm text-stone-600">Version everything: <code class="bg-stone-100 px-1 rounded">PROMPT_VERSION</code>, <code class="bg-stone-100 px-1 rounded">RETRIEVAL_CONFIG</code>, <code class="bg-stone-100 px-1 rounded">MODEL_ROUTING_TABLE</code>. Traces must record these versions.</p>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">14.14 Incident Response (Lightweight)</h3>
+        <p class="text-stone-700 mb-4">Keep a one-page <code class="bg-stone-100 px-1 rounded">ops/RUNBOOK.md</code>:</p>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Severity</th>
+                        <th class="border border-stone-200 p-2">Example</th>
+                        <th class="border border-stone-200 p-2">First actions</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">SEV1</td>
+                        <td class="border border-stone-200 p-2">Service down, 50%+ errors</td>
+                        <td class="border border-stone-200 p-2">Rollback deploy; status page; preserve traces</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">SEV2</td>
+                        <td class="border border-stone-200 p-2">Cost 3× baseline</td>
+                        <td class="border border-stone-200 p-2">Enable circuit breaker; lower max tokens; disable agent path</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">SEV3</td>
+                        <td class="border border-stone-200 p-2">Retrieval quality drop</td>
+                        <td class="border border-stone-200 p-2">Roll back <code class="bg-stone-100 px-1 rounded text-xs">RETRIEVAL_CONFIG</code>; rerun M12 eval</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">SEV4</td>
+                        <td class="border border-stone-200 p-2">Single tenant abuse</td>
+                        <td class="border border-stone-200 p-2">Revoke API key; tighten rate limit</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <p class="text-sm text-stone-500 mt-4"><strong>After:</strong> blameless note — timeline, root cause, eval gap that let it ship, action item (new golden question, new alert).</p>
+    </div>
+
+    <!-- Decision guide -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">Engineering Decision Guide</h3>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Goal</th>
+                        <th class="border border-stone-200 p-2">First lever</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Ship this week</td>
+                        <td class="border border-stone-200 p-2">Render/Railway Docker web service + platform secrets</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Debug user report</td>
+                        <td class="border border-stone-200 p-2">Langfuse trace → span waterfall</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Cut LLM bill 30%</td>
+                        <td class="border border-stone-200 p-2">Semantic cache + <code class="bg-stone-100 px-1 rounded text-xs">gpt-4o-mini</code> default + prompt prefix caching</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Survive provider outage</td>
+                        <td class="border border-stone-200 p-2">Timeouts + fallback model + circuit breaker</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Pass enterprise security</td>
+                        <td class="border border-stone-200 p-2">Secrets Manager, per-tenant keys, no PII in traces</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Agent SSE in AWS</td>
+                        <td class="border border-stone-200 p-2">Fargate/ALB, not API Gateway 29s limit</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Prove deploy safe</td>
+                        <td class="border border-stone-200 p-2">M12 eval in CI + canary + rollback tag</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Failure modes -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">Failure Modes &amp; Diagnostics</h3>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Failure</th>
+                        <th class="border border-stone-200 p-2">Cause</th>
+                        <th class="border border-stone-200 p-2">Fix</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Memory climb under load</td>
+                        <td class="border border-stone-200 p-2">Unbounded SSE queue</td>
+                        <td class="border border-stone-200 p-2"><code class="bg-stone-100 px-1 rounded text-xs">maxsize</code> on <code class="bg-stone-100 px-1 rounded text-xs">asyncio.Queue</code>; cancel on disconnect</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">502 mid-stream</td>
+                        <td class="border border-stone-200 p-2">Platform timeout &lt; generation time</td>
+                        <td class="border border-stone-200 p-2">Raise idle timeout; heartbeat SSE comments</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Cost spike overnight</td>
+                        <td class="border border-stone-200 p-2">Retry storm on 429</td>
+                        <td class="border border-stone-200 p-2">Exponential backoff; circuit breaker</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Cross-tenant data leak</td>
+                        <td class="border border-stone-200 p-2">Missing filter on retrieval</td>
+                        <td class="border border-stone-200 p-2"><code class="bg-stone-100 px-1 rounded text-xs">tenant_id</code> on every query; integration test</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Cache returns stale policy</td>
+                        <td class="border border-stone-200 p-2">Corpus updated, cache not</td>
+                        <td class="border border-stone-200 p-2">Bump <code class="bg-stone-100 px-1 rounded text-xs">corpus_version</code> in cache key</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">&ldquo;Works locally&rdquo;</td>
+                        <td class="border border-stone-200 p-2"><code class="bg-stone-100 px-1 rounded text-xs">.env</code> secrets not in cloud</td>
+                        <td class="border border-stone-200 p-2"><code class="bg-stone-100 px-1 rounded text-xs">/ready</code> checks; secret mount verification</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Eval passed, prod bad</td>
+                        <td class="border border-stone-200 p-2">Canary too small / wrong traffic</td>
+                        <td class="border border-stone-200 p-2">Per-tenant golden samples; longer canary</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Traces useless</td>
+                        <td class="border border-stone-200 p-2">No <code class="bg-stone-100 px-1 rounded text-xs">prompt_version</code> attribute</td>
+                        <td class="border border-stone-200 p-2">Standard span metadata contract</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Labs -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">Hands-on Labs</h3>
+        <div class="space-y-4">
+            <div class="border border-stone-200 rounded-lg p-4">
+                <h4 class="font-semibold text-stone-800">Lab 14.1 — Containerize and health-check</h4>
+                <ol class="list-decimal pl-5 text-sm text-stone-700 mt-2 space-y-1">
+                    <li>Add Dockerfile + <code class="bg-stone-100 px-1 rounded">.dockerignore</code> (exclude <code class="bg-stone-100 px-1 rounded">.env</code>, <code class="bg-stone-100 px-1 rounded">evals/raw/</code>).</li>
+                    <li>Implement <code class="bg-stone-100 px-1 rounded">/health</code> and <code class="bg-stone-100 px-1 rounded">/ready</code> with LLM + vector store checks.</li>
+                    <li>Run locally: <code class="bg-stone-100 px-1 rounded">docker build -t ai-service . &amp;&amp; docker run -p 8000:8000 --env-file .env ai-service</code>.</li>
+                </ol>
+                <p class="text-xs text-emerald-700 mt-2"><strong>Done when:</strong> image runs non-root; <code class="bg-stone-100 px-1 rounded">/ready</code> returns 503 when Qdrant/Postgres is stopped; README documents required env vars.</p>
+            </div>
+            <div class="border border-stone-200 rounded-lg p-4">
+                <h4 class="font-semibold text-stone-800">Lab 14.2 — Async SSE with backpressure</h4>
+                <ol class="list-decimal pl-5 text-sm text-stone-700 mt-2 space-y-1">
+                    <li>Convert M10 streaming endpoint to <code class="bg-stone-100 px-1 rounded">EventSourceResponse</code> + bounded queue.</li>
+                    <li>Simulate slow client; verify producer blocks at <code class="bg-stone-100 px-1 rounded">maxsize</code>.</li>
+                    <li>Disconnect client mid-stream; verify producer task cancelled.</li>
+                </ol>
+                <p class="text-xs text-emerald-700 mt-2"><strong>Done when:</strong> <code class="bg-stone-100 px-1 rounded">curl -N</code> receives token events; <code class="bg-stone-100 px-1 rounded">event: done</code> terminates cleanly.</p>
+            </div>
+            <div class="border border-stone-200 rounded-lg p-4">
+                <h4 class="font-semibold text-stone-800">Lab 14.3 — Langfuse (or LangSmith) tracing</h4>
+                <ol class="list-decimal pl-5 text-sm text-stone-700 mt-2 space-y-1">
+                    <li>Create project; wire <code class="bg-stone-100 px-1 rounded">@observe</code> or LangGraph callback on LLM + retriever + tools.</li>
+                    <li>Run one M8 research query and one M6 RAG query; find both traces in UI.</li>
+                    <li>Attach <code class="bg-stone-100 px-1 rounded">tenant_id</code>, <code class="bg-stone-100 px-1 rounded">prompt_version</code>, token usage to each trace.</li>
+                </ol>
+                <p class="text-xs text-emerald-700 mt-2"><strong>Done when:</strong> trace with ≥ 3 spans; attribute contract in <code class="bg-stone-100 px-1 rounded">docs/observability.md</code>.</p>
+            </div>
+            <div class="border border-stone-200 rounded-lg p-4">
+                <h4 class="font-semibold text-stone-800">Lab 14.4 — Retries, fallback, circuit breaker</h4>
+                <ol class="list-decimal pl-5 text-sm text-stone-700 mt-2 space-y-1">
+                    <li>Wrap provider client with tenacity retry (429/503 only).</li>
+                    <li>Implement primary → fallback model route.</li>
+                    <li>Force 5 failures; verify circuit opens and returns degradation response.</li>
+                </ol>
+                <p class="text-xs text-emerald-700 mt-2"><strong>Done when:</strong> unit test for circuit breaker cooldown; no unbounded retry loop in logs.</p>
+            </div>
+            <div class="border border-stone-200 rounded-lg p-4">
+                <h4 class="font-semibold text-stone-800">Lab 14.5 — Rate limits and tenant keys</h4>
+                <ol class="list-decimal pl-5 text-sm text-stone-700 mt-2 space-y-1">
+                    <li>Issue two API keys for tenants A and B.</li>
+                    <li>Enforce per-key RPM; verify A throttled does not block B.</li>
+                    <li>Confirm retrieval never crosses tenants on shared index.</li>
+                </ol>
+                <p class="text-xs text-emerald-700 mt-2"><strong>Done when:</strong> <code class="bg-stone-100 px-1 rounded">429</code> with <code class="bg-stone-100 px-1 rounded">Retry-After</code>; tenant isolation test passes.</p>
+            </div>
+            <div class="border border-stone-200 rounded-lg p-4">
+                <h4 class="font-semibold text-stone-800">Lab 14.6 — Semantic cache layer</h4>
+                <ol class="list-decimal pl-5 text-sm text-stone-700 mt-2 space-y-1">
+                    <li>Add <code class="bg-stone-100 px-1 rounded">answer_cache</code> collection (or Redis + embed hash).</li>
+                    <li>Ask same question two ways; measure cache hit on paraphrase.</li>
+                    <li>Bump <code class="bg-stone-100 px-1 rounded">prompt_version</code>; verify cache miss.</li>
+                </ol>
+                <p class="text-xs text-emerald-700 mt-2"><strong>Done when:</strong> hit rate on 10 paraphrase pairs; <code class="bg-stone-100 px-1 rounded">tenant_id</code> in cache key.</p>
+            </div>
+            <div class="border border-stone-200 rounded-lg p-4">
+                <h4 class="font-semibold text-stone-800">Lab 14.7 — Deploy to cloud + secrets</h4>
+                <ol class="list-decimal pl-5 text-sm text-stone-700 mt-2 space-y-1">
+                    <li>Deploy container to Render, Railway, or ECS/Cloud Run (one is enough).</li>
+                    <li>Store <code class="bg-stone-100 px-1 rounded">OPENAI_API_KEY</code> and <code class="bg-stone-100 px-1 rounded">LANGFUSE_SECRET_KEY</code> in platform secret UI — not git.</li>
+                    <li>Smoke test <code class="bg-stone-100 px-1 rounded">/ready</code> and one SSE request against public URL.</li>
+                </ol>
+                <p class="text-xs text-emerald-700 mt-2"><strong>Done when:</strong> public HTTPS URL in README; <code class="bg-stone-100 px-1 rounded">git grep sk-</code> returns nothing.</p>
+            </div>
+            <div class="border border-stone-200 rounded-lg p-4">
+                <h4 class="font-semibold text-stone-800">Lab 14.8 — CI/CD with eval gate</h4>
+                <ol class="list-decimal pl-5 text-sm text-stone-700 mt-2 space-y-1">
+                    <li>Add GitHub Actions: test → M12 eval → docker build.</li>
+                    <li>Fail pipeline if faithfulness (or primary metric) drops &gt; agreed tolerance.</li>
+                    <li>Tag image <code class="bg-stone-100 px-1 rounded">sha-abc123</code>; document rollback command.</li>
+                </ol>
+                <p class="text-xs text-emerald-700 mt-2"><strong>Done when:</strong> CI badge in README; one intentional bad prompt fails the eval step.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mini project -->
+    <div class="bg-white p-6 rounded-lg shadow-md border-2 border-indigo-200">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-2">Mini Project — Production Deployment</h3>
+        <p class="text-stone-700 mb-4">
+            Take your <strong>M13-hardened</strong> M10 API (or M6/M7 Chat-With-Docs if you are on the RAG track) and ship a <strong>production-grade</strong> deployment:
+            Docker, cloud secrets, SSE, tracing, reliability patterns, cache, ops, and CI/CD with M12 eval gate.
+        </p>
+        <div class="flex flex-wrap items-center justify-center gap-2 text-center text-sm mb-4">
+            <div class="bg-indigo-50 px-3 py-2 rounded-lg border border-indigo-100 font-medium text-indigo-900">GitHub Actions</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-purple-50 px-3 py-2 rounded-lg border border-purple-100 font-medium text-purple-900">Docker image</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-amber-50 px-3 py-2 rounded-lg border border-amber-100 font-medium text-amber-900">Cloud deploy</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-100 font-medium text-emerald-900">FastAPI + M13 + M10/M6</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-indigo-50 px-3 py-2 rounded-lg border border-indigo-100 font-medium text-indigo-900">Langfuse + ops dashboard</div>
+        </div>
+        <h4 class="font-semibold text-stone-800 mb-2">Definition of done</h4>
+        <ul class="space-y-2 text-sm text-stone-700 mb-4">
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> Public URL serves hardened endpoint only (M13 controls active)</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> <code class="bg-stone-100 px-1 rounded">docker build</code> reproducible; no secrets in image layers</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> SSE endpoint streams full agent or RAG answer without blocking other requests</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> Traces visible with <code class="bg-stone-100 px-1 rounded">tenant_id</code>, model, tokens, <code class="bg-stone-100 px-1 rounded">prompt_version</code></li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> <code class="bg-stone-100 px-1 rounded">ops/cost-report.md</code>: p50/p95 latency and $/request over ≥ 20 test calls</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> Circuit breaker and fallback demonstrated in test or scripted failure</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> Cache hit documented on repeated/paraphrased queries</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> CI pipeline runs M12 eval before deploy tag</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> <code class="bg-stone-100 px-1 rounded">ops/RUNBOOK.md</code> with rollback steps and one simulated incident note</li>
+        </ul>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Criterion</th>
+                        <th class="border border-stone-200 p-2">Weight</th>
+                        <th class="border border-stone-200 p-2">Excellent</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2">Deploy &amp; secrets hygiene</td>
+                        <td class="border border-stone-200 p-2">20%</td>
+                        <td class="border border-stone-200 p-2">Non-root Docker; cloud secrets; <code class="bg-stone-100 px-1 rounded text-xs">/ready</code> checks deps; no keys in repo</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2">Streaming &amp; reliability</td>
+                        <td class="border border-stone-200 p-2">25%</td>
+                        <td class="border border-stone-200 p-2">Bounded SSE; disconnect cleanup; retries/timeouts/fallback/circuit breaker correct</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2">Observability</td>
+                        <td class="border border-stone-200 p-2">25%</td>
+                        <td class="border border-stone-200 p-2">End-to-end traces; cost + latency attributable to tenant/feature</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2">Security &amp; tenancy</td>
+                        <td class="border border-stone-200 p-2">15%</td>
+                        <td class="border border-stone-200 p-2">API keys hashed; rate limits; tenant isolation on retrieval/cache</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2">Ops maturity</td>
+                        <td class="border border-stone-200 p-2">15%</td>
+                        <td class="border border-stone-200 p-2">CI eval gate; rollback documented; runbook actionable</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <p class="text-sm text-stone-500 mt-4">
+            <strong>Bridge to Capstone:</strong> Module 14 is the <strong>runtime shell</strong> your capstone demo runs in.
+            Same Docker image, trace/cost attribution, tenant and rate-limit model.
+            Read <a href="#m15" class="text-indigo-600 hover:underline">Capstone Overview</a> for how M1–M14 artifacts compose into Week 8 deliverables.
+        </p>
+    </div>
+
+    <!-- Part IV checkpoint -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">Part IV Closing Checklist</h3>
+        <p class="text-stone-700 mb-3">Before capstone kickoff, confirm:</p>
+        <ul class="space-y-2 text-sm text-stone-700 mb-4">
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> M12 eval runs in CI and blocks regressions</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> M13 guardrails active on the deployed route (not bypassed)</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> You can open a trace and explain every span in a user complaint</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> You know $ per request for RAG-only vs full agent pipeline</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> Rollback is one command or one click — tested once</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> Incident runbook exists; on-call is not &ldquo;DM the intern&rdquo;</li>
+        </ul>
+        <p class="text-sm text-stone-500">That is the production bar — not &ldquo;it&rsquo;s on the internet,&rdquo; but &ldquo;it&rsquo;s traced, bounded, cost-aware, and recoverable.&rdquo;</p>
+        <p class="mt-4 text-sm">
+            <a href="#m13" class="text-stone-500 hover:underline">← M13 Guardrails &amp; Safety</a>
+            <span class="text-stone-300 mx-2">·</span>
+            <a href="#m15" class="text-indigo-600 font-medium hover:underline">Next: Capstone Overview →</a>
+        </p>
+    </div>
+</section>

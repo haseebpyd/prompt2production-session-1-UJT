@@ -1,0 +1,704 @@
+<section id="m10" class="chapter space-y-8">
+    <header>
+        <p class="text-sm font-semibold uppercase tracking-wide text-indigo-600 mb-2">Part III — Agentic AI · Module 10 · 2 days</p>
+        <h2 class="text-4xl font-bold text-stone-900">M10: Agent Orchestration Frameworks</h2>
+        <p class="text-lg text-stone-600 mt-2">
+            Your Module 8 Research Assistant works — until you need to <strong>pause for approval</strong>, <strong>resume after a crash</strong>,
+            <strong>stream partial progress to the UI</strong>, or <strong>branch</strong> on structured outcomes (e.g., &ldquo;needs human review&rdquo; vs &ldquo;auto-answer&rdquo;).
+            Hand-rolled <code class="bg-stone-100 px-1 rounded">while</code> loops with global state become brittle: thread IDs get lost, interrupts race with tool calls,
+            and nobody can replay what happened at step 7. This module rebuilds your M8/M9 Research Assistant in <strong>LangGraph</strong>
+            and produces the <strong>Orchestrated Workflow Agent</strong> — the API-packaged agent core for your capstone.
+        </p>
+        <div class="mt-4 bg-indigo-50 border border-indigo-100 rounded-lg p-4">
+            <p class="text-sm font-semibold text-indigo-900 mb-2">Learning objectives</p>
+            <ul class="list-disc pl-5 text-sm text-indigo-800 space-y-1">
+                <li>Choose an orchestration framework for a given autonomy and compliance profile</li>
+                <li>Model agent workflows as graphs with typed state, branching, and termination</li>
+                <li>Implement human-in-the-loop interrupts, approvals, and checkpoint resume</li>
+                <li>Stream graph events to clients and combine deterministic steps with LLM nodes</li>
+                <li>Port the M8 Research Assistant into LangGraph without losing tool contracts or traces</li>
+            </ul>
+        </div>
+    </header>
+
+    <!-- Why this matters -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">Why This Matters in Production</h3>
+        <p class="text-stone-700 mb-4">
+            Orchestration frameworks exist to make <strong>control flow explicit</strong>. LangGraph (and peers) model agents as
+            <strong>state machines on a graph</strong>: nodes are steps, edges are transitions, and state is a typed object you can checkpoint,
+            inspect, and stream. That is the difference between a demo script and something you can ship behind FastAPI with HITL and audit trails.
+        </p>
+        <div class="bg-indigo-50 border border-indigo-100 rounded-lg p-4 text-sm text-indigo-900">
+            <strong>Course posture:</strong> LangGraph is the primary stack for M10–M11 and the capstone. Use other frameworks to understand
+            patterns (handoff, crew, debate), not to split your project across three stacks.
+        </div>
+    </div>
+
+    <!-- Day 1 -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <p class="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-2">Day 1 — Frameworks, landscape, graphs as state machines</p>
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">10.1 When a Framework Earns Its Keep</h3>
+        <p class="text-stone-700 mb-4 text-sm">
+            You built ReAct from scratch in M8 to <strong>understand</strong> the loop. Frameworks are worth adopting when you need:
+        </p>
+        <div class="overflow-x-auto mb-4">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Capability</th>
+                        <th class="border border-stone-200 p-2">Hand-rolled pain</th>
+                        <th class="border border-stone-200 p-2">Framework value</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Branching</td>
+                        <td class="border border-stone-200 p-2">Nested <code class="bg-stone-100 px-1 rounded">if</code> + scattered flags</td>
+                        <td class="border border-stone-200 p-2">Conditional edges on graph</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">HITL pause</td>
+                        <td class="border border-stone-200 p-2">Custom event queues, lost context</td>
+                        <td class="border border-stone-200 p-2"><code class="bg-stone-100 px-1 rounded">interrupt()</code> + resume from checkpoint</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Durability</td>
+                        <td class="border border-stone-200 p-2">Reconstruct state from logs</td>
+                        <td class="border border-stone-200 p-2">Persisted checkpoints per <code class="bg-stone-100 px-1 rounded">thread_id</code></td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Streaming</td>
+                        <td class="border border-stone-200 p-2">Manual yield plumbing</td>
+                        <td class="border border-stone-200 p-2">Native <code class="bg-stone-100 px-1 rounded">stream()</code> / <code class="bg-stone-100 px-1 rounded">astream_events</code></td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Multi-agent (M11)</td>
+                        <td class="border border-stone-200 p-2">Ad-hoc message buses</td>
+                        <td class="border border-stone-200 p-2">Subgraphs, handoffs, supervisors</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+            <div class="border-l-4 border-emerald-500 pl-3">
+                <p class="font-semibold text-stone-800">Use when</p>
+                <p class="text-stone-600">Production needs interrupts, replay, branching, or multi-step workflows with observability.</p>
+            </div>
+            <div class="border-l-4 border-red-400 pl-3">
+                <p class="font-semibold text-stone-800">Skip when</p>
+                <p class="text-stone-600">A single linear ReAct loop with no pause/resume — keep M8&rsquo;s minimal loop until requirements grow.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">10.2 Landscape — Pick the Right Abstraction</h3>
+        <div class="overflow-x-auto mb-4">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Framework</th>
+                        <th class="border border-stone-200 p-2">Core model</th>
+                        <th class="border border-stone-200 p-2">Strengths</th>
+                        <th class="border border-stone-200 p-2">Trade-offs</th>
+                        <th class="border border-stone-200 p-2">Course role</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr class="bg-indigo-50">
+                        <td class="border border-stone-200 p-2 font-medium">LangGraph</td>
+                        <td class="border border-stone-200 p-2">Stateful directed graph; nodes + edges</td>
+                        <td class="border border-stone-200 p-2">HITL, checkpointing, streaming, subgraphs; LangChain ecosystem</td>
+                        <td class="border border-stone-200 p-2">Learning curve; verbose for trivial chains</td>
+                        <td class="border border-stone-200 p-2"><strong>PRIMARY</strong> — M10–M11, capstone</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">OpenAI Agents SDK</td>
+                        <td class="border border-stone-200 p-2">Agent + handoff + guardrails</td>
+                        <td class="border border-stone-200 p-2">Tight OpenAI integration; simple handoffs</td>
+                        <td class="border border-stone-200 p-2">Less graph-native; vendor coupling</td>
+                        <td class="border border-stone-200 p-2">Compare handoffs in M11</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">CrewAI</td>
+                        <td class="border border-stone-200 p-2">Role-based crews &amp; tasks</td>
+                        <td class="border border-stone-200 p-2">Fast multi-agent prototypes; readable YAML/Python roles</td>
+                        <td class="border border-stone-200 p-2">Less fine-grained state control</td>
+                        <td class="border border-stone-200 p-2">M11 topology contrast</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">AutoGen</td>
+                        <td class="border border-stone-200 p-2">Conversable agents, group chat</td>
+                        <td class="border border-stone-200 p-2">Research-style multi-agent dialogue</td>
+                        <td class="border border-stone-200 p-2">Heavier runtime; chat-centric</td>
+                        <td class="border border-stone-200 p-2">Awareness only</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">LlamaIndex agents</td>
+                        <td class="border border-stone-200 p-2">Agent workflows over indexes</td>
+                        <td class="border border-stone-200 p-2">Strong when retrieval is the spine</td>
+                        <td class="border border-stone-200 p-2">Overlap with your M6/M7 stack</td>
+                        <td class="border border-stone-200 p-2">Retriever-as-tool pattern</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Pydantic AI</td>
+                        <td class="border border-stone-200 p-2">Type-safe agents + validation</td>
+                        <td class="border border-stone-200 p-2">Excellent structured outputs &amp; tool typing</td>
+                        <td class="border border-stone-200 p-2">Smaller orchestration surface</td>
+                        <td class="border border-stone-200 p-2">Complements M3 schemas</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="flex flex-wrap items-center justify-center gap-2 text-center text-sm mb-2">
+            <div class="bg-indigo-50 px-3 py-2 rounded-lg border border-indigo-100 font-medium text-indigo-900">Production requirement</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-purple-50 px-3 py-2 rounded-lg border border-purple-100 font-medium text-purple-900">Need HITL or checkpoint?</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-100 font-medium text-emerald-900">LangGraph (default)</div>
+        </div>
+        <p class="text-sm text-stone-500 text-center">Multi-agent roles only → CrewAI or LangGraph subgraphs · OpenAI-only simple handoff → Agents SDK</p>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">10.3 Graphs Are State Machines</h3>
+        <p class="text-stone-700 mb-4 text-sm">
+            A LangGraph workflow is not &ldquo;LangChain with extra steps.&rdquo; It is a <strong>state machine</strong>:
+        </p>
+        <ul class="list-disc pl-5 text-stone-700 space-y-2 mb-4 text-sm">
+            <li><strong>State</strong> — a typed dict or dataclass (messages, plan, tool results, flags).</li>
+            <li><strong>Nodes</strong> — functions that read state and return partial updates.</li>
+            <li><strong>Edges</strong> — fixed or conditional transitions (<code class="bg-stone-100 px-1 rounded">route_after_tools</code>).</li>
+            <li><strong>Reducer</strong> — how lists merge (e.g., <code class="bg-stone-100 px-1 rounded">messages</code> append via <code class="bg-stone-100 px-1 rounded">add_messages</code>).</li>
+        </ul>
+        <div class="flex flex-wrap items-center justify-center gap-2 text-center text-sm mb-4">
+            <div class="bg-indigo-50 px-3 py-2 rounded-lg border border-indigo-100 font-medium text-indigo-900">START</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-purple-50 px-3 py-2 rounded-lg border border-purple-100 font-medium text-purple-900">agent</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-amber-50 px-3 py-2 rounded-lg border border-amber-100 font-medium text-amber-900">tools (if tool_calls)</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-purple-50 px-3 py-2 rounded-lg border border-purple-100 font-medium text-purple-900">agent</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-red-50 px-3 py-2 rounded-lg border border-red-100 font-medium text-red-900">human (interrupt)</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-100 font-medium text-emerald-900">END</div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+            <div class="border-l-4 border-emerald-500 pl-3">
+                <p class="font-semibold text-stone-800">Use graph when</p>
+                <p class="text-stone-600">You can draw the workflow on a whiteboard with ≤10 nodes and named branches.</p>
+            </div>
+            <div class="border-l-4 border-red-400 pl-3">
+                <p class="font-semibold text-stone-800">Skip graph when</p>
+                <p class="text-stone-600">Behavior is one ReAct cycle with no branches — graph overhead buys nothing.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">10.4 Minimal LangGraph — ReAct as a Graph</h3>
+        <p class="text-stone-700 mb-4 text-sm">
+            This mirrors M8&rsquo;s Research Assistant tools (<code class="bg-stone-100 px-1 rounded">search_docs</code>, <code class="bg-stone-100 px-1 rounded">web_search</code>)
+            without the framework magic. Carry forward from M8: same tool schemas, same max-step guard, same trace logging — the graph only <strong>structures</strong> what you already proved.
+        </p>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm"><code>from typing import Annotated, Literal, TypedDict
+from langgraph.graph import StateGraph, START, END
+from langgraph.graph.message import add_messages
+from langgraph.checkpoint.memory import MemorySaver
+from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
+
+class AgentState(TypedDict):
+    messages: Annotated[list, add_messages]
+    step_count: int
+    total_cost_usd: float
+
+MAX_STEPS = 8
+
+def agent_node(state: AgentState, llm_with_tools):
+    response = llm_with_tools.invoke(state["messages"])
+    return {
+        "messages": [response],
+        "step_count": state["step_count"] + 1,
+    }
+
+def should_continue(state: AgentState) -&gt; Literal["tools", "end", "limit"]:
+    if state["step_count"] &gt;= MAX_STEPS:
+        return "limit"
+    last = state["messages"][-1]
+    if isinstance(last, AIMessage) and last.tool_calls:
+        return "tools"
+    return "end"
+
+def build_research_graph(llm_with_tools, tool_node):
+    g = StateGraph(AgentState)
+    g.add_node("agent", lambda s: agent_node(s, llm_with_tools))
+    g.add_node("tools", tool_node)
+    g.add_edge(START, "agent")
+    g.add_conditional_edges("agent", should_continue, {
+        "tools": "tools", "end": END, "limit": END
+    })
+    g.add_edge("tools", "agent")
+    return g.compile(checkpointer=MemorySaver())</code></pre>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">10.5 Hybrid Deterministic + Autonomous</h3>
+        <p class="text-stone-700 mb-4 text-sm">Production systems rarely go &ldquo;full agent.&rdquo; Prefer <strong>deterministic nodes</strong> for anything you can specify:</p>
+        <div class="overflow-x-auto mb-4">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Node type</th>
+                        <th class="border border-stone-200 p-2">Example</th>
+                        <th class="border border-stone-200 p-2">Why deterministic</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Preprocessor</td>
+                        <td class="border border-stone-200 p-2">PII redaction, query normalization</td>
+                        <td class="border border-stone-200 p-2">Compliance; no model variance</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Router</td>
+                        <td class="border border-stone-200 p-2">Intent → <code class="bg-stone-100 px-1 rounded">retrieve</code> vs <code class="bg-stone-100 px-1 rounded">escalate</code></td>
+                        <td class="border border-stone-200 p-2">Cheaper than LLM routing at scale</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Post-validator</td>
+                        <td class="border border-stone-200 p-2">JSON schema check on tool args</td>
+                        <td class="border border-stone-200 p-2">Block bad calls before execution</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Autonomous</td>
+                        <td class="border border-stone-200 p-2">ReAct agent node</td>
+                        <td class="border border-stone-200 p-2">Open-ended research</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="flex flex-wrap items-center justify-center gap-2 text-center text-sm mb-4">
+            <div class="bg-indigo-50 px-3 py-2 rounded-lg border border-indigo-100 font-medium text-indigo-900">User input</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-stone-100 px-3 py-2 rounded-lg border border-stone-200 font-medium text-stone-800">Normalize (deterministic)</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-stone-100 px-3 py-2 rounded-lg border border-stone-200 font-medium text-stone-800">Route (deterministic)</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-purple-50 px-3 py-2 rounded-lg border border-purple-100 font-medium text-purple-900">RAG or LLM agent</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-stone-100 px-3 py-2 rounded-lg border border-stone-200 font-medium text-stone-800">Output guard</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-100 font-medium text-emerald-900">Response</div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+            <div class="border-l-4 border-emerald-500 pl-3">
+                <p class="font-semibold text-stone-800">Use hybrid when</p>
+                <p class="text-stone-600">60–80% of steps are known (ingest, retrieve, validate) and 20–40% need judgment.</p>
+            </div>
+            <div class="border-l-4 border-red-400 pl-3">
+                <p class="font-semibold text-stone-800">Skip hybrid when</p>
+                <p class="text-stone-600">Every step is exploratory — but then budget harder (M11 cost pitfalls).</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Day 2 -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <p class="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-2">Day 2 — HITL, checkpointing, streaming, M8 rebuild</p>
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">10.6 Human-in-the-Loop: Interrupts and Approvals</h3>
+        <p class="text-stone-700 mb-4 text-sm">
+            Some actions must not run unattended: sending email, deleting records, publishing customer-facing text.
+            LangGraph supports <strong>interrupts</strong> before a node runs; humans approve or edit state; execution <strong>resumes</strong> from the checkpoint.
+        </p>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm mb-4"><code>from langgraph.types import interrupt, Command
+
+def approval_gate(state: AgentState):
+    last = state["messages"][-1]
+    if isinstance(last, AIMessage) and _needs_approval(last):
+        decision = interrupt({
+            "action": "approve_tool_call",
+            "tool_calls": last.tool_calls,
+            "reason": "External publish requires human OK",
+        })
+        if not decision.get("approved"):
+            return {"messages": [HumanMessage(content="User rejected the action.")]}
+    return {}
+
+# Compile with interrupt_before=["approval_gate"] or use interrupt() inside the node</code></pre>
+        <div class="overflow-x-auto mb-4">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Pattern</th>
+                        <th class="border border-stone-200 p-2">Mechanism</th>
+                        <th class="border border-stone-200 p-2">Use when</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Pre-node interrupt</td>
+                        <td class="border border-stone-200 p-2"><code class="bg-stone-100 px-1 rounded">interrupt_before=["dangerous_tool"]</code></td>
+                        <td class="border border-stone-200 p-2">Hard gate on specific nodes</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">In-node interrupt</td>
+                        <td class="border border-stone-200 p-2"><code class="bg-stone-100 px-1 rounded">interrupt(payload)</code></td>
+                        <td class="border border-stone-200 p-2">Conditional approval based on state</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Edit state on resume</td>
+                        <td class="border border-stone-200 p-2">Client sends <code class="bg-stone-100 px-1 rounded">Command(resume=...)</code></td>
+                        <td class="border border-stone-200 p-2">Human fixes tool args before run</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+            <div class="border-l-4 border-emerald-500 pl-3">
+                <p class="font-semibold text-stone-800">Use HITL when</p>
+                <p class="text-stone-600">Irreversible side effects, regulated domains, or customer-facing drafts.</p>
+            </div>
+            <div class="border-l-4 border-red-400 pl-3">
+                <p class="font-semibold text-stone-800">Skip HITL when</p>
+                <p class="text-stone-600">Read-only research on internal docs — log and ship; don&rsquo;t add approval latency to every turn.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">10.7 Checkpointing and Thread Identity</h3>
+        <p class="text-stone-700 mb-4 text-sm">
+            Checkpoints persist state per <strong><code class="bg-stone-100 px-1 rounded">thread_id</code></strong> (conversation or workflow instance).
+            After a deploy or worker crash, reload and continue.
+        </p>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm mb-4"><code>from langgraph.checkpoint.sqlite import SqliteSaver
+
+checkpointer = SqliteSaver.from_conn_string("checkpoints.db")
+graph = builder.compile(checkpointer=checkpointer)
+
+config = {"configurable": {"thread_id": "research-session-42"}}
+result = graph.invoke(
+    {"messages": [HumanMessage("Compare our refund policy to Stripe's")]},
+    config,
+)
+
+# Later: same thread_id resumes mid-graph
+result2 = graph.invoke(None, config)  # after HITL resume payload</code></pre>
+        <ul class="list-disc pl-5 text-stone-700 space-y-2 text-sm">
+            <li>One <code class="bg-stone-100 px-1 rounded">thread_id</code> per user session or ticket — never reuse across users.</li>
+            <li>TTL or archive old checkpoints; they contain message history.</li>
+            <li>Store checkpoint DB path in env; use Postgres saver (<code class="bg-stone-100 px-1 rounded">langgraph-checkpoint-postgres</code>) in staging+.</li>
+        </ul>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">10.8 Streaming to Clients</h3>
+        <p class="text-stone-700 mb-4 text-sm">
+            Users tolerate 8–15s agent runs if they <strong>see progress</strong>. Stream graph events, not only the final string.
+            Wire this to FastAPI <code class="bg-stone-100 px-1 rounded">StreamingResponse</code> (SSE or NDJSON) in the mini project.
+            Frontend shows: thinking → tool name → partial answer.
+        </p>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm mb-4"><code>async def stream_research(graph, inputs, thread_id: str):
+    config = {"configurable": {"thread_id": thread_id}}
+    async for event in graph.astream_events(inputs, config, version="v2"):
+        kind = event["event"]
+        if kind == "on_chat_model_stream":
+            yield {"type": "token", "data": event["data"]["chunk"].content}
+        elif kind == "on_tool_start":
+            yield {"type": "tool_start", "name": event["name"]}
+        elif kind == "on_tool_end":
+            yield {"type": "tool_end", "output": str(event["data"]["output"])[:500]}</code></pre>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+            <div class="border-l-4 border-emerald-500 pl-3">
+                <p class="font-semibold text-stone-800">Use streaming when</p>
+                <p class="text-stone-600">Multi-tool runs &gt;3s; demos and support consoles.</p>
+            </div>
+            <div class="border-l-4 border-red-400 pl-3">
+                <p class="font-semibold text-stone-800">Skip streaming when</p>
+                <p class="text-stone-600">Batch offline jobs — log to object storage instead.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">10.9 Rebuild M8 Research Assistant in LangGraph</h3>
+        <p class="text-stone-700 mb-4 text-sm"><strong>Migration checklist</strong> (from M8 scratch agent + M9 memory):</p>
+        <ol class="list-decimal pl-5 text-stone-700 space-y-2 mb-4 text-sm">
+            <li><strong>State</strong> — <code class="bg-stone-100 px-1 rounded">messages</code> + <code class="bg-stone-100 px-1 rounded">step_count</code> + <code class="bg-stone-100 px-1 rounded">total_cost_usd</code> + optional <code class="bg-stone-100 px-1 rounded">memory_snippets</code> from M9 vector store.</li>
+            <li><strong>Tools</strong> — unchanged: <code class="bg-stone-100 px-1 rounded">search_docs</code> (M6/M7 RAG), <code class="bg-stone-100 px-1 rounded">web_search</code>; same Pydantic args from M3.</li>
+            <li><strong>Nodes</strong> — <code class="bg-stone-100 px-1 rounded">load_memory</code> (deterministic) → <code class="bg-stone-100 px-1 rounded">agent</code> → <code class="bg-stone-100 px-1 rounded">tools</code> → <code class="bg-stone-100 px-1 rounded">save_memory</code> (deterministic).</li>
+            <li><strong>Edges</strong> — conditional on tool calls and max steps (same as M8).</li>
+            <li><strong>Checkpoint</strong> — <code class="bg-stone-100 px-1 rounded">thread_id</code> per session; enable resume after HITL.</li>
+            <li><strong>Traces</strong> — log every node enter/exit with latency and token cost (bridge to M12 evals).</li>
+        </ol>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm mb-4"><code>def load_memory(state: AgentState, memory_store) -&gt; dict:
+    query = state["messages"][-1].content
+    snippets = memory_store.similarity_search(query, k=3)
+    return {"memory_snippets": [s.page_content for s in snippets]}
+
+def save_memory(state: AgentState, memory_store) -&gt; dict:
+    # Persist salient facts from final answer — M9 policy
+    ...</code></pre>
+        <div class="flex flex-wrap items-center justify-center gap-2 text-center text-sm mb-4">
+            <div class="bg-indigo-50 px-3 py-2 rounded-lg border border-indigo-100 font-medium text-indigo-900">START</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-stone-100 px-3 py-2 rounded-lg border border-stone-200 font-medium text-stone-800">load_memory</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-purple-50 px-3 py-2 rounded-lg border border-purple-100 font-medium text-purple-900">agent</div>
+            <span class="text-stone-400">⇄</span>
+            <div class="bg-amber-50 px-3 py-2 rounded-lg border border-amber-100 font-medium text-amber-900">tools</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-red-50 px-3 py-2 rounded-lg border border-red-100 font-medium text-red-900">approval_gate</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-stone-100 px-3 py-2 rounded-lg border border-stone-200 font-medium text-stone-800">save_memory</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-100 font-medium text-emerald-900">END</div>
+        </div>
+        <p class="text-sm text-stone-600">
+            <strong>Parity test:</strong> run the same 10 golden questions from M8; answers and tool counts should match within tolerance; traces must list graph node names.
+        </p>
+    </div>
+
+    <!-- Engineering decision guide -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">Engineering Decision Guide</h3>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Goal</th>
+                        <th class="border border-stone-200 p-2">First choice</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">HITL + resume after crash</td>
+                        <td class="border border-stone-200 p-2">LangGraph + Sqlite/Postgres checkpointer</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Type-safe tool args</td>
+                        <td class="border border-stone-200 p-2">Pydantic models (M3) + graph tool node</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Fast multi-role prototype</td>
+                        <td class="border border-stone-200 p-2">CrewAI — or LangGraph subgraphs for capstone</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">OpenAI-only handoff spike</td>
+                        <td class="border border-stone-200 p-2">Agents SDK — compare in M11</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Retrieval-heavy agent</td>
+                        <td class="border border-stone-200 p-2">LlamaIndex agent <em>or</em> your M7 retriever as a tool</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Minimal branching</td>
+                        <td class="border border-stone-200 p-2">Stay on M8 loop until you need checkpoint/HITL</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Failure modes -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">Failure Modes &amp; Diagnostics</h3>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Failure</th>
+                        <th class="border border-stone-200 p-2">Cause</th>
+                        <th class="border border-stone-200 p-2">Fix</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Stuck after interrupt</td>
+                        <td class="border border-stone-200 p-2">Client never sent resume <code class="bg-stone-100 px-1 rounded">Command</code></td>
+                        <td class="border border-stone-200 p-2">Timeout + cancel; document resume API contract</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Checkpoint bloat</td>
+                        <td class="border border-stone-200 p-2">Unbounded message list in state</td>
+                        <td class="border border-stone-200 p-2">Summarize old turns (M9); prune in <code class="bg-stone-100 px-1 rounded">save_memory</code></td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Stream gaps</td>
+                        <td class="border border-stone-200 p-2">Filtering wrong <code class="bg-stone-100 px-1 rounded">astream_events</code> kinds</td>
+                        <td class="border border-stone-200 p-2">Log raw events in dev; map tool_start/end explicitly</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">M8 parity drift</td>
+                        <td class="border border-stone-200 p-2">Different tool binding or prompts</td>
+                        <td class="border border-stone-200 p-2">Diff tool schemas and system prompt; frozen eval set</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">&ldquo;Framework magic&rdquo; regressions</td>
+                        <td class="border border-stone-200 p-2">Hidden default retries</td>
+                        <td class="border border-stone-200 p-2">Set explicit <code class="bg-stone-100 px-1 rounded">recursion_limit</code>; keep max steps in state</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Hybrid router wrong</td>
+                        <td class="border border-stone-200 p-2">LLM router on simple keywords</td>
+                        <td class="border border-stone-200 p-2">Deterministic router first; LLM only on low confidence</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Labs -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">Hands-on Labs</h3>
+        <div class="space-y-4">
+            <div class="border border-stone-200 rounded-lg p-4">
+                <h4 class="font-semibold text-stone-800">Lab 10.1 — ReAct graph parity</h4>
+                <ol class="list-decimal pl-5 text-sm text-stone-700 mt-2 space-y-1">
+                    <li>Port M8 tools into a LangGraph <code class="bg-stone-100 px-1 rounded">StateGraph</code> with <code class="bg-stone-100 px-1 rounded">MemorySaver</code>.</li>
+                    <li>Run 10 questions from your M8 golden set.</li>
+                    <li>Compare final answers, step counts, and tool invocation names.</li>
+                </ol>
+                <p class="text-xs text-emerald-700 mt-2"><strong>Done when:</strong> graph completes without custom <code class="bg-stone-100 px-1 rounded">while</code> loop; ≥8/10 answers match M8 quality; trace includes node names.</p>
+            </div>
+            <div class="border border-stone-200 rounded-lg p-4">
+                <h4 class="font-semibold text-stone-800">Lab 10.2 — HITL interrupt</h4>
+                <ol class="list-decimal pl-5 text-sm text-stone-700 mt-2 space-y-1">
+                    <li>Add <code class="bg-stone-100 px-1 rounded">approval_gate</code> before a mock <code class="bg-stone-100 px-1 rounded">publish_summary</code> tool.</li>
+                    <li>Trigger interrupt; resume with <code class="bg-stone-100 px-1 rounded">approved: false</code> and <code class="bg-stone-100 px-1 rounded">approved: true</code> separately.</li>
+                    <li>Confirm checkpoint resumes at the correct node.</li>
+                </ol>
+                <p class="text-xs text-emerald-700 mt-2"><strong>Done when:</strong> rejected path never calls publish tool; approved path completes and <code class="bg-stone-100 px-1 rounded">thread_id</code> is reusable.</p>
+            </div>
+            <div class="border border-stone-200 rounded-lg p-4">
+                <h4 class="font-semibold text-stone-800">Lab 10.3 — SSE streaming</h4>
+                <ol class="list-decimal pl-5 text-sm text-stone-700 mt-2 space-y-1">
+                    <li>Expose <code class="bg-stone-100 px-1 rounded">astream_events</code> via FastAPI SSE endpoint.</li>
+                    <li>Client receives tokens and at least one <code class="bg-stone-100 px-1 rounded">tool_start</code> event per run.</li>
+                    <li>Measure time-to-first-token vs non-streaming invoke.</li>
+                </ol>
+                <p class="text-xs text-emerald-700 mt-2"><strong>Done when:</strong> first event &lt;2s on a typical research question; stream ends with explicit <code class="bg-stone-100 px-1 rounded">done</code> event.</p>
+            </div>
+            <div class="border border-stone-200 rounded-lg p-4">
+                <h4 class="font-semibold text-stone-800">Lab 10.4 — Deterministic + agent hybrid</h4>
+                <ol class="list-decimal pl-5 text-sm text-stone-700 mt-2 space-y-1">
+                    <li>Add deterministic <code class="bg-stone-100 px-1 rounded">normalize_query</code> and <code class="bg-stone-100 px-1 rounded">validate_output</code> nodes.</li>
+                    <li>Route doc questions through <code class="bg-stone-100 px-1 rounded">search_docs</code> without extra LLM hop when intent is <code class="bg-stone-100 px-1 rounded">docs</code>.</li>
+                    <li>Log which path taken per request.</li>
+                </ol>
+                <p class="text-xs text-emerald-700 mt-2"><strong>Done when:</strong> router accuracy ≥80% on 20 labeled intents; doc-only questions use fewer LLM calls.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mini project -->
+    <div class="bg-white p-6 rounded-lg shadow-md border-2 border-indigo-200">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-2">Mini Project — Orchestrated Workflow Agent</h3>
+        <p class="text-stone-700 mb-4">
+            Package the LangGraph Research Assistant as a <strong>FastAPI service</strong> with branching, human approval,
+            checkpointing, streaming, and structured traces. This is the API-packaged agent core for your capstone.
+        </p>
+        <div class="flex flex-wrap items-center justify-center gap-2 text-center text-sm mb-4">
+            <div class="bg-indigo-50 px-3 py-2 rounded-lg border border-indigo-100 font-medium text-indigo-900">FastAPI</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-purple-50 px-3 py-2 rounded-lg border border-purple-100 font-medium text-purple-900">LangGraph</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-stone-100 px-3 py-2 rounded-lg border border-stone-200 font-medium text-stone-800">normalize → route → memory</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-amber-50 px-3 py-2 rounded-lg border border-amber-100 font-medium text-amber-900">agent ⇄ tools</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-red-50 px-3 py-2 rounded-lg border border-red-100 font-medium text-red-900">approval</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-100 font-medium text-emerald-900">SSE + checkpoints</div>
+        </div>
+        <h4 class="font-semibold text-stone-800 mb-2">Spec</h4>
+        <ol class="list-decimal pl-5 text-sm text-stone-700 space-y-1 mb-4">
+            <li><strong>Branching</strong> — router node: internal docs vs web vs &ldquo;needs approval&rdquo; publish path.</li>
+            <li><strong>Human approval</strong> — interrupt before any side-effect tool (mock publish is fine).</li>
+            <li><strong>Checkpointing</strong> — Sqlite or Postgres saver; <code class="bg-stone-100 px-1 rounded">thread_id</code> in API.</li>
+            <li><strong>Streaming</strong> — SSE or NDJSON progress endpoint.</li>
+            <li><strong>Traces</strong> — structured JSON log per node (latency, tokens, cost estimate).</li>
+        </ol>
+        <h4 class="font-semibold text-stone-800 mb-2">Definition of done</h4>
+        <ul class="space-y-2 text-sm text-stone-700 mb-4">
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> <code class="bg-stone-100 px-1 rounded">POST /research</code> and <code class="bg-stone-100 px-1 rounded">POST /research/stream</code> work with <code class="bg-stone-100 px-1 rounded">thread_id</code></li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> <code class="bg-stone-100 px-1 rounded">POST /research/resume</code> accepts HITL decision payload</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> Checkpoints survive process restart (document how to verify)</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> M8 golden set re-run with parity notes in <code class="bg-stone-100 px-1 rounded">evals/reports/m10-langgraph.md</code></li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> README: graph diagram, env vars, cost per request example</li>
+        </ul>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Criterion</th>
+                        <th class="border border-stone-200 p-2">Weight</th>
+                        <th class="border border-stone-200 p-2">Excellent</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2">Control flow</td>
+                        <td class="border border-stone-200 p-2">30%</td>
+                        <td class="border border-stone-200 p-2">Clear branches; max steps; approval cannot be bypassed</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2">Durability &amp; HITL</td>
+                        <td class="border border-stone-200 p-2">25%</td>
+                        <td class="border border-stone-200 p-2">Checkpoint resume proven; interrupt contract documented</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2">Observability</td>
+                        <td class="border border-stone-200 p-2">25%</td>
+                        <td class="border border-stone-200 p-2">Per-node traces + streaming; tool names visible</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2">API quality</td>
+                        <td class="border border-stone-200 p-2">20%</td>
+                        <td class="border border-stone-200 p-2">Typed requests; errors on bad <code class="bg-stone-100 px-1 rounded">thread_id</code>; config-driven limits</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Bridge -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">Bridge to Module 11 — Multi-Agent Systems</h3>
+        <p class="text-stone-700 text-sm mb-4">
+            A single LangGraph agent with five tools scales until <strong>roles</strong> multiply: planner, researcher, writer, critic.
+            Module 11 splits work across <strong>topologies</strong> (supervisor-worker, sequential pipelines, debate) and introduces
+            <strong>handoffs</strong> in LangGraph, CrewAI, and the OpenAI Agents SDK.
+        </p>
+        <p class="text-stone-700 text-sm mb-2"><strong>Take forward:</strong></p>
+        <ul class="list-disc pl-5 text-sm text-stone-700 space-y-1 mb-4">
+            <li>This graph as the <strong>worker</strong> subgraph inside a supervisor (M11).</li>
+            <li>Checkpoint + <code class="bg-stone-100 px-1 rounded">thread_id</code> pattern for the whole pipeline.</li>
+            <li>Per-node cost fields — you&rsquo;ll aggregate per-agent in M11.</li>
+        </ul>
+        <p class="text-sm text-stone-500">
+            Leave behind: one monolithic agent node doing planning, retrieval, writing, and critique in a single context window.
+        </p>
+    </div>
+
+    <!-- Part III checkpoint -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">Part III Checkpoint</h3>
+        <p class="text-stone-700 mb-3">Before Module 11, confirm:</p>
+        <ul class="space-y-2 text-sm text-stone-700 mb-4">
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> You can explain your graph on a whiteboard without opening code</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> HITL and checkpoint resume are demoable in under two minutes</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> Streaming shows tool progress, not only final text</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> M8 Research Assistant behavior is preserved or consciously improved with eval notes</li>
+        </ul>
+        <p class="text-sm text-stone-500">
+            That is the orchestration bar — not &ldquo;we imported LangGraph,&rdquo; but &ldquo;we can pause, resume, branch, and ship it behind an API.&rdquo;
+        </p>
+        <p class="mt-6 text-sm flex flex-wrap gap-4">
+            <a href="#m9" class="text-stone-500 hover:underline">← M9 Memory &amp; Planning</a>
+            <a href="#m11" class="text-indigo-600 font-medium hover:underline">Next: M11 — Multi-Agent Systems →</a>
+        </p>
+    </div>
+</section>

@@ -1,0 +1,724 @@
+<section id="m11" class="chapter space-y-8">
+    <header>
+        <p class="text-sm font-semibold uppercase tracking-wide text-indigo-600 mb-2">Part III — Agentic AI · Module 11 · 3 days</p>
+        <h2 class="text-4xl font-bold text-stone-900">M11: Multi-Agent Systems</h2>
+        <p class="text-lg text-stone-600 mt-2">
+            One LangGraph agent with eight tools can research and draft — until quality plateaus: the planner rushes retrieval,
+            the writer never sees raw sources, and the critic runs in the same context as the author (so it &ldquo;approves&rdquo; its own mistakes).
+            <strong>Multi-agent</strong> design splits <strong>roles</strong> and <strong>context windows</strong> so each step gets the right tools, prompts, and budget.
+            The cost is real: more agents means more LLM calls, handoff overhead, and failure modes. This module produces the
+            <strong>Multi-Agent Research &amp; Content Pipeline</strong>: planner → researchers → writer → critic, built primarily in LangGraph with explicit handoffs.
+        </p>
+        <div class="mt-4 bg-indigo-50 border border-indigo-100 rounded-lg p-4">
+            <p class="text-sm font-semibold text-indigo-900 mb-2">Learning objectives</p>
+            <ul class="list-disc pl-5 text-sm text-indigo-800 space-y-1">
+                <li>Decide when multi-agent architecture beats a single orchestrated agent</li>
+                <li>Implement common topologies: supervisor-worker, hierarchical, sequential, network, and debate</li>
+                <li>Define roles, communication channels, and handoff contracts between agents</li>
+                <li>Mitigate pitfalls: cost explosion, error propagation, deadlocks, and context loss</li>
+                <li>Compare handoff patterns in LangGraph, CrewAI, and the OpenAI Agents SDK</li>
+                <li>Apply orchestrator-worker and evaluator-optimizer patterns with measurable quality/cost trade-offs</li>
+            </ul>
+        </div>
+    </header>
+
+    <!-- Why this matters -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">Why This Matters in Production</h3>
+        <p class="text-stone-700 mb-4">
+            Module 11 teaches when the multi-agent trade-off is worth it, which <strong>topology</strong> fits your workflow,
+            and how to ship a pipeline with <strong>per-agent traces and cost reports</strong> — the pattern your capstone uses for research-to-content flows.
+        </p>
+        <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-900">
+            <strong>Cost warning:</strong> more agents means more LLM calls, handoff overhead, and debugging surface.
+            Every new role needs a <strong>measurable</strong> quality or compliance win that pays for its tokens.
+        </div>
+    </div>
+
+    <!-- Day 1 -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <p class="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-2">Day 1 — When multi-agent, topologies, roles</p>
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">11.1 When to Use Multi-Agent (and When Not To)</h3>
+        <div class="overflow-x-auto mb-4">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Signal</th>
+                        <th class="border border-stone-200 p-2">Single agent (M10)</th>
+                        <th class="border border-stone-200 p-2">Multi-agent team</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Task structure</td>
+                        <td class="border border-stone-200 p-2">One goal, shared context</td>
+                        <td class="border border-stone-200 p-2">Distinct phases with different expertise</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Context pressure</td>
+                        <td class="border border-stone-200 p-2">Fits one window with summarization</td>
+                        <td class="border border-stone-200 p-2">Raw sources must stay with researcher, not writer</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Quality gate</td>
+                        <td class="border border-stone-200 p-2">Self-check in same prompt</td>
+                        <td class="border border-stone-200 p-2">Independent critic / evaluator</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Compliance</td>
+                        <td class="border border-stone-200 p-2">Uniform policy</td>
+                        <td class="border border-stone-200 p-2">Separation of duties (research vs publish)</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Cost/latency budget</td>
+                        <td class="border border-stone-200 p-2">Tight</td>
+                        <td class="border border-stone-200 p-2">Moderate — you pay for coordination</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+            <div class="border-l-4 border-emerald-500 pl-3">
+                <p class="font-semibold text-stone-800">Use when</p>
+                <p class="text-stone-600">Phases have different tools and prompts; independent review measurably cuts errors; organizational roles map cleanly to agents.</p>
+            </div>
+            <div class="border-l-4 border-red-400 pl-3">
+                <p class="font-semibold text-stone-800">Skip when</p>
+                <p class="text-stone-600">A single ReAct loop with two tools already meets SLA — adding agents multiplies tokens and debugging surface.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">11.2 Topologies — The Design Vocabulary</h3>
+        <div class="overflow-x-auto mb-4">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Topology</th>
+                        <th class="border border-stone-200 p-2">Shape</th>
+                        <th class="border border-stone-200 p-2">Behavior</th>
+                        <th class="border border-stone-200 p-2">Use when</th>
+                        <th class="border border-stone-200 p-2">Skip when</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Supervisor-worker</td>
+                        <td class="border border-stone-200 p-2">Hub assigns subtasks</td>
+                        <td class="border border-stone-200 p-2">Central planner delegates; workers report back</td>
+                        <td class="border border-stone-200 p-2">Dynamic task breakdown (research)</td>
+                        <td class="border border-stone-200 p-2">Supervisor context becomes the bottleneck</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Hierarchical</td>
+                        <td class="border border-stone-200 p-2">Tree of supervisors</td>
+                        <td class="border border-stone-200 p-2">Manager → team leads → workers</td>
+                        <td class="border border-stone-200 p-2">Large org simulation; scoped budgets per subtree</td>
+                        <td class="border border-stone-200 p-2">Small pipelines — overhead &gt; benefit</td>
+                    </tr>
+                    <tr class="bg-indigo-50">
+                        <td class="border border-stone-200 p-2 font-medium">Sequential</td>
+                        <td class="border border-stone-200 p-2">A → B → C → D</td>
+                        <td class="border border-stone-200 p-2">Fixed pipeline, handoff artifacts</td>
+                        <td class="border border-stone-200 p-2">Content pipelines, ETL-style AI flows</td>
+                        <td class="border border-stone-200 p-2">Need parallel exploration or debate</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Network</td>
+                        <td class="border border-stone-200 p-2">Any agent messages any</td>
+                        <td class="border border-stone-200 p-2">Flexible collaboration</td>
+                        <td class="border border-stone-200 p-2">Brainstorming, open research</td>
+                        <td class="border border-stone-200 p-2">Hard to debug; deadlock risk</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Debate</td>
+                        <td class="border border-stone-200 p-2">Proposer vs critic rounds</td>
+                        <td class="border border-stone-200 p-2">Iterative refinement</td>
+                        <td class="border border-stone-200 p-2">High-stakes reasoning, policy review</td>
+                        <td class="border border-stone-200 p-2">Latency-sensitive chat</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mb-4">
+            <div class="border border-stone-200 rounded-lg p-4">
+                <h5 class="font-semibold text-stone-800 mb-2">Sequential pipeline (course default)</h5>
+                <div class="flex flex-wrap items-center gap-1 text-xs">
+                    <span class="bg-indigo-50 px-2 py-1 rounded border border-indigo-100">Planner</span>
+                    <span class="text-stone-400">→</span>
+                    <span class="bg-purple-50 px-2 py-1 rounded border border-purple-100">Researchers</span>
+                    <span class="text-stone-400">→</span>
+                    <span class="bg-amber-50 px-2 py-1 rounded border border-amber-100">Writer</span>
+                    <span class="text-stone-400">→</span>
+                    <span class="bg-emerald-50 px-2 py-1 rounded border border-emerald-100">Critic</span>
+                </div>
+            </div>
+            <div class="border border-stone-200 rounded-lg p-4">
+                <h5 class="font-semibold text-stone-800 mb-2">Supervisor-worker</h5>
+                <p class="text-stone-600 text-xs">Supervisor delegates to Worker A and Worker B; workers report back to hub for synthesis or replanning.</p>
+            </div>
+        </div>
+        <p class="text-sm text-stone-500">
+            <strong>Course default:</strong> sequential pipeline <em>inside</em> a light supervisor for replanning — planner acts as supervisor when research gaps are found.
+        </p>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">11.3 Roles — Prompts Are Job Descriptions</h3>
+        <p class="text-stone-700 mb-4 text-sm">
+            A role is not a name tag. It is a <strong>contract</strong>: objective, allowed tools, output schema (Pydantic from M3), and budget (max steps, tokens, $).
+        </p>
+        <div class="overflow-x-auto mb-4">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Agent</th>
+                        <th class="border border-stone-200 p-2">Input</th>
+                        <th class="border border-stone-200 p-2">Output</th>
+                        <th class="border border-stone-200 p-2">Tools</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Planner</td>
+                        <td class="border border-stone-200 p-2">User topic</td>
+                        <td class="border border-stone-200 p-2"><code class="bg-stone-100 px-1 rounded">Plan</code> with sub-questions and assignees</td>
+                        <td class="border border-stone-200 p-2">Optional lightweight retrieval</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Researcher</td>
+                        <td class="border border-stone-200 p-2">Sub-question</td>
+                        <td class="border border-stone-200 p-2"><code class="bg-stone-100 px-1 rounded">ResearchPacket</code> with citations</td>
+                        <td class="border border-stone-200 p-2">RAG + web</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Writer</td>
+                        <td class="border border-stone-200 p-2">Packets + plan</td>
+                        <td class="border border-stone-200 p-2"><code class="bg-stone-100 px-1 rounded">Draft</code></td>
+                        <td class="border border-stone-200 p-2"><strong>None</strong> — prevents sneaky re-retrieval</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Critic</td>
+                        <td class="border border-stone-200 p-2">Draft + packets</td>
+                        <td class="border border-stone-200 p-2"><code class="bg-stone-100 px-1 rounded">Critique</code> with pass/fail + edits</td>
+                        <td class="border border-stone-200 p-2"><strong>None</strong></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+            <div class="border-l-4 border-emerald-500 pl-3">
+                <p class="font-semibold text-stone-800">Use role boundaries when</p>
+                <p class="text-stone-600">Tool access should be least-privilege (writer cannot browse the web).</p>
+            </div>
+            <div class="border-l-4 border-red-400 pl-3">
+                <p class="font-semibold text-stone-800">Skip role boundaries when</p>
+                <p class="text-stone-600">Roles are cosmetic duplicates of the same system prompt.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">11.4 Communication — What Gets Handed Off</h3>
+        <p class="text-stone-700 mb-4 text-sm">Agents should pass <strong>artifacts</strong>, not chat logs.</p>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm mb-4"><code>from pydantic import BaseModel, Field
+
+class ResearchPacket(BaseModel):
+    sub_question: str
+    findings: str
+    sources: list[str] = Field(description="URLs or doc paths")
+    confidence: float
+
+class PipelineState(TypedDict):
+    topic: str
+    plan: list[str]
+    packets: Annotated[list[ResearchPacket], operator.add]
+    draft: str
+    critique: str
+    messages: Annotated[list, add_messages]
+    cost_by_agent: dict[str, float]</code></pre>
+        <ol class="list-decimal pl-5 text-stone-700 space-y-2 text-sm">
+            <li><strong>Structured handoffs</strong> — validate with Pydantic before the next node runs.</li>
+            <li><strong>Citation carry-forward</strong> — writer and critic must see <code class="bg-stone-100 px-1 rounded">sources</code>, not just prose summaries.</li>
+            <li><strong>No global chat dump</strong> — pass only fields the next role needs (reduces context loss and cost).</li>
+        </ol>
+    </div>
+
+    <!-- Day 2 -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <p class="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-2">Day 2 — Handoffs, orchestrator-worker, evaluator-optimizer</p>
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">11.5 Handoffs Across Frameworks</h3>
+        <div class="overflow-x-auto mb-4">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Framework</th>
+                        <th class="border border-stone-200 p-2">Handoff mechanism</th>
+                        <th class="border border-stone-200 p-2">Mental model</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr class="bg-indigo-50">
+                        <td class="border border-stone-200 p-2 font-medium">LangGraph</td>
+                        <td class="border border-stone-200 p-2">Shared <code class="bg-stone-100 px-1 rounded">StateGraph</code> state; subgraphs per role; <code class="bg-stone-100 px-1 rounded">Command</code> to jump</td>
+                        <td class="border border-stone-200 p-2">Pipeline as one graph with role nodes</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">CrewAI</td>
+                        <td class="border border-stone-200 p-2"><code class="bg-stone-100 px-1 rounded">Task</code> output → next <code class="bg-stone-100 px-1 rounded">Task</code> input; <code class="bg-stone-100 px-1 rounded">Agent</code> roles in crew</td>
+                        <td class="border border-stone-200 p-2">YAML/Python job board</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">OpenAI Agents SDK</td>
+                        <td class="border border-stone-200 p-2"><code class="bg-stone-100 px-1 rounded">handoff()</code> to another agent with instructions</td>
+                        <td class="border border-stone-200 p-2">Delegation with guardrails</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <p class="text-stone-700 mb-4 text-sm"><strong>LangGraph (primary) — sequential role nodes:</strong></p>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm mb-4"><code>from langgraph.graph import StateGraph, START, END
+
+def planner_node(state: PipelineState, llm) -&gt; dict:
+    plan = llm.with_structured_output(Plan).invoke(state["topic"])
+    return {"plan": plan.sub_questions, "cost_by_agent": _add_cost(state, "planner", llm)}
+
+def researcher_node(state: PipelineState, llm, tools) -&gt; dict:
+    sq = state["plan"][state["research_index"]]
+    packet = run_research_subgraph(sq, llm, tools)
+    return {"packets": [packet], "cost_by_agent": _add_cost(state, "researcher", llm)}
+
+def writer_node(state: PipelineState, llm) -&gt; dict:
+    context = _format_packets(state["packets"])
+    draft = llm.invoke(f"Write from sources only:\n{context}").content
+    return {"draft": draft, "cost_by_agent": _add_cost(state, "writer", llm)}
+
+def critic_node(state: PipelineState, llm) -&gt; dict:
+    critique = llm.with_structured_output(CritiqueReport).invoke(
+        {"draft": state["draft"], "sources": state["packets"]}
+    )
+    return {"critique": critique.json(), "cost_by_agent": _add_cost(state, "critic", llm)}
+
+def route_after_critic(state: PipelineState) -&gt; str:
+    report = CritiqueReport.model_validate_json(state["critique"])
+    if report.passed:
+        return END
+    if state.get("revision_rounds", 0) &gt;= 2:
+        return END
+    return "writer"
+
+builder = StateGraph(PipelineState)
+builder.add_node("planner", planner_node)
+builder.add_node("researcher", researcher_node)
+builder.add_node("writer", writer_node)
+builder.add_node("critic", critic_node)
+# edges: START→planner→researcher*→writer→critic→writer|END</code></pre>
+        <p class="text-sm text-stone-500">Use LangGraph for the capstone so checkpoints, HITL (M10), and traces stay unified.</p>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">11.6 Orchestrator-Worker Pattern</h3>
+        <p class="text-stone-700 mb-4 text-sm">
+            A <strong>supervisor</strong> (or planner) decomposes the goal, assigns workers, and <strong>synthesizes</strong> or replans when workers return
+            <code class="bg-stone-100 px-1 rounded">blocked</code> or low confidence.
+        </p>
+        <div class="flex flex-wrap items-center justify-center gap-2 text-center text-sm mb-4">
+            <div class="bg-indigo-50 px-3 py-2 rounded-lg border border-indigo-100 font-medium text-indigo-900">User topic</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-purple-50 px-3 py-2 rounded-lg border border-purple-100 font-medium text-purple-900">Planner / supervisor</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-amber-50 px-3 py-2 rounded-lg border border-amber-100 font-medium text-amber-900">Researcher workers</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-100 font-medium text-emerald-900">Writer draft</div>
+        </div>
+        <ul class="list-disc pl-5 text-stone-700 space-y-2 text-sm mb-4">
+            <li>Cap parallel workers (e.g., max 3 researchers) — cost grows linearly with fan-out.</li>
+            <li>Supervisor returns structured <code class="bg-stone-100 px-1 rounded">Plan</code>, not free-form prose — easier to validate.</li>
+            <li>Workers are <strong>stateless</strong> aside from their packet; supervisor merges.</li>
+        </ul>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+            <div class="border-l-4 border-emerald-500 pl-3">
+                <p class="font-semibold text-stone-800">Use when</p>
+                <p class="text-stone-600">Subtasks are unknown until runtime (open research).</p>
+            </div>
+            <div class="border-l-4 border-red-400 pl-3">
+                <p class="font-semibold text-stone-800">Skip when</p>
+                <p class="text-stone-600">Fixed ETL-style steps — use sequential graph without a replanning supervisor.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">11.7 Evaluator-Optimizer Pattern</h3>
+        <p class="text-stone-700 mb-4 text-sm">
+            A <strong>critic</strong> (evaluator) scores the draft against rubric criteria; on fail, route back to <strong>writer</strong> (optimizer)
+            with structured edits — not a vague &ldquo;try again.&rdquo;
+        </p>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm mb-4"><code>class CritiqueReport(BaseModel):
+    passed: bool
+    factual_issues: list[str]
+    missing_citations: list[str]
+    suggested_edits: str
+
+def evaluator_optimizer_edge(state: PipelineState) -&gt; str:
+    c = CritiqueReport.model_validate_json(state["critique"])
+    if c.passed:
+        return "done"
+    if state.get("revision_rounds", 0) &gt;= 2:
+        return "done"  # ship with critique attached — don't infinite loop
+    return "revise"</code></pre>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+            <div class="border-l-4 border-emerald-500 pl-3">
+                <p class="font-semibold text-stone-800">Use when</p>
+                <p class="text-stone-600">Factual grounding matters; critic has access to <code class="bg-stone-100 px-1 rounded">ResearchPacket</code> sources.</p>
+            </div>
+            <div class="border-l-4 border-red-400 pl-3">
+                <p class="font-semibold text-stone-800">Skip when</p>
+                <p class="text-stone-600">Single-pass creative writing with no verification requirement.</p>
+            </div>
+        </div>
+        <p class="text-sm text-stone-500 mt-3">Pair with M10 <strong>max revision rounds</strong> — same discipline as max ReAct steps.</p>
+    </div>
+
+    <!-- Day 3 -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <p class="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-2">Day 3 — Pitfalls, cost, parallel workers</p>
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">11.8 Pitfalls — What Breaks in Production</h3>
+        <div class="overflow-x-auto mb-4">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Pitfall</th>
+                        <th class="border border-stone-200 p-2">Symptom</th>
+                        <th class="border border-stone-200 p-2">Mitigation</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Cost explosion</td>
+                        <td class="border border-stone-200 p-2">Bill 10× single-agent</td>
+                        <td class="border border-stone-200 p-2">Per-agent budgets; parallel caps; cheaper models for planner/critic</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Error propagation</td>
+                        <td class="border border-stone-200 p-2">Bad packet → polished wrong draft</td>
+                        <td class="border border-stone-200 p-2">Validate packets; critic checks claims vs sources; block writer on empty citations</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Deadlocks</td>
+                        <td class="border border-stone-200 p-2">Agents wait on each other</td>
+                        <td class="border border-stone-200 p-2">Acyclic graph; timeouts; max rounds; supervisor fallback</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Context loss</td>
+                        <td class="border border-stone-200 p-2">Writer invents facts</td>
+                        <td class="border border-stone-200 p-2">Artifact handoffs with <code class="bg-stone-100 px-1 rounded">sources</code>; writer prompt: &ldquo;use only provided packets&rdquo;</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Supervisor bottleneck</td>
+                        <td class="border border-stone-200 p-2">Hub sees everything, runs out of window</td>
+                        <td class="border border-stone-200 p-2">Summarize packets for supervisor; full text only on worker + writer</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Duplicate work</td>
+                        <td class="border border-stone-200 p-2">Two researchers same query</td>
+                        <td class="border border-stone-200 p-2">Planner dedupes sub-questions; shared cache key on retrieval</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="flex flex-wrap items-center justify-center gap-2 text-center text-sm">
+            <div class="bg-red-50 px-3 py-2 rounded-lg border border-red-100 font-medium text-red-900">Worker error</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-amber-50 px-3 py-2 rounded-lg border border-amber-100 font-medium text-amber-900">Schema valid?</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-purple-50 px-3 py-2 rounded-lg border border-purple-100 font-medium text-purple-900">Retry once</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-indigo-50 px-3 py-2 rounded-lg border border-indigo-100 font-medium text-indigo-900">Supervisor replan</div>
+        </div>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">11.9 Per-Agent Traces and Cost Report</h3>
+        <p class="text-stone-700 mb-4 text-sm">Every node should emit structured trace events and accumulate cost by agent:</p>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm mb-4"><code>def _trace(agent: str, event: str, meta: dict, state: PipelineState):
+    log.info({
+        "agent": agent,
+        "event": event,
+        "thread_id": meta.get("thread_id"),
+        "latency_ms": meta.get("latency_ms"),
+        "tokens_in": meta.get("tokens_in"),
+        "tokens_out": meta.get("tokens_out"),
+        "cost_usd": meta.get("cost_usd"),
+    })
+    state["cost_by_agent"][agent] = state["cost_by_agent"].get(agent, 0) + meta["cost_usd"]</code></pre>
+        <p class="text-stone-700 mb-2 text-sm"><strong>End-of-run cost report</strong> (required for mini project):</p>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm mb-4"><code>Pipeline: research-content-7f3a
+Total: $0.042
+  planner:    $0.004  (1 call)
+  researcher: $0.021  (3 sub-questions, parallel)
+  writer:     $0.009  (1 draft)
+  critic:     $0.008  (2 rounds)
+Latency p95: 18.2s</code></pre>
+        <p class="text-sm text-stone-600">Compare to M10 single-agent baseline on the <strong>same topics</strong> — document when quality justifies the premium.</p>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">11.10 Parallel Researchers (Optional Fan-Out)</h3>
+        <p class="text-stone-700 mb-4 text-sm">
+            When sub-questions are independent, use LangGraph <code class="bg-stone-100 px-1 rounded">Send</code> API or parallel edges — with a <strong>hard cap</strong>:
+        </p>
+        <pre class="bg-stone-900 text-stone-100 p-4 rounded-lg overflow-x-auto text-sm mb-4"><code># Conceptual: map plan.sub_questions to researcher subgraph invocations
+# Merge packets with reducer: Annotated[list, operator.add]
+MAX_PARALLEL_RESEARCHERS = 3</code></pre>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+            <div class="border-l-4 border-emerald-500 pl-3">
+                <p class="font-semibold text-stone-800">Use parallel when</p>
+                <p class="text-stone-600">Latency matters and sub-questions are independent.</p>
+            </div>
+            <div class="border-l-4 border-red-400 pl-3">
+                <p class="font-semibold text-stone-800">Skip parallel when</p>
+                <p class="text-stone-600">Budget is fixed — sequential researchers are cheaper and easier to debug.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Engineering decision guide -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">Engineering Decision Guide</h3>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Goal</th>
+                        <th class="border border-stone-200 p-2">Topology / pattern</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Blog/post from research</td>
+                        <td class="border border-stone-200 p-2">Sequential + evaluator-optimizer</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Open-ended investigation</td>
+                        <td class="border border-stone-200 p-2">Supervisor-worker with replan</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Quality gate before publish</td>
+                        <td class="border border-stone-200 p-2">Critic + M10 HITL on publish node</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Brainstorm 10 angles</td>
+                        <td class="border border-stone-200 p-2">Network or debate (time-boxed rounds)</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Enterprise role simulation</td>
+                        <td class="border border-stone-200 p-2">Hierarchical supervisors</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Minimize cost</td>
+                        <td class="border border-stone-200 p-2">Single M10 agent + one critic pass only</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Failure modes -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">Failure Modes &amp; Diagnostics</h3>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Failure</th>
+                        <th class="border border-stone-200 p-2">Cause</th>
+                        <th class="border border-stone-200 p-2">Fix</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Hallucinated citations</td>
+                        <td class="border border-stone-200 p-2">Writer never received sources</td>
+                        <td class="border border-stone-200 p-2">Enforce <code class="bg-stone-100 px-1 rounded">ResearchPacket.sources</code>; fail validation if empty</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Critic always passes</td>
+                        <td class="border border-stone-200 p-2">Same model, same context as writer</td>
+                        <td class="border border-stone-200 p-2">Separate model/temperature; critic only sees draft + packets</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Infinite revise loop</td>
+                        <td class="border border-stone-200 p-2">No max rounds on evaluator-optimizer</td>
+                        <td class="border border-stone-200 p-2">Cap at 2; attach critique to partial ship</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Deadlock in network topology</td>
+                        <td class="border border-stone-200 p-2">Circular waits</td>
+                        <td class="border border-stone-200 p-2">Replace with DAG; add supervisor</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">5× cost vs estimate</td>
+                        <td class="border border-stone-200 p-2">Parallel researchers uncapped</td>
+                        <td class="border border-stone-200 p-2"><code class="bg-stone-100 px-1 rounded">MAX_PARALLEL</code>; cache retrieval per query</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2 font-medium">Planner duplicates work</td>
+                        <td class="border border-stone-200 p-2">No dedup on sub-questions</td>
+                        <td class="border border-stone-200 p-2">Normalize and hash sub-questions before assign</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Labs -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">Hands-on Labs</h3>
+        <div class="space-y-4">
+            <div class="border border-stone-200 rounded-lg p-4">
+                <h4 class="font-semibold text-stone-800">Lab 11.1 — Sequential handoff schemas</h4>
+                <ol class="list-decimal pl-5 text-sm text-stone-700 mt-2 space-y-1">
+                    <li>Define <code class="bg-stone-100 px-1 rounded">Plan</code>, <code class="bg-stone-100 px-1 rounded">ResearchPacket</code>, <code class="bg-stone-100 px-1 rounded">CritiqueReport</code> Pydantic models.</li>
+                    <li>Wire planner → researcher → writer with schema validation between nodes.</li>
+                    <li>Inject one invalid packet; confirm pipeline surfaces error without silent continue.</li>
+                </ol>
+                <p class="text-xs text-emerald-700 mt-2"><strong>Done when:</strong> invalid handoff fails fast with agent name in error; writer node has no tool bindings.</p>
+            </div>
+            <div class="border border-stone-200 rounded-lg p-4">
+                <h4 class="font-semibold text-stone-800">Lab 11.2 — Evaluator-optimizer loop</h4>
+                <ol class="list-decimal pl-5 text-sm text-stone-700 mt-2 space-y-1">
+                    <li>Critic returns <code class="bg-stone-100 px-1 rounded">passed: false</code> with <code class="bg-stone-100 px-1 rounded">suggested_edits</code>.</li>
+                    <li>Writer revises using edits only (second pass).</li>
+                    <li>Stop after two rounds; final output includes last critique if still failing.</li>
+                </ol>
+                <p class="text-xs text-emerald-700 mt-2"><strong>Done when:</strong> exactly ≤2 writer revisions per run; second draft addresses at least one listed factual issue.</p>
+            </div>
+            <div class="border border-stone-200 rounded-lg p-4">
+                <h4 class="font-semibold text-stone-800">Lab 11.3 — Supervisor replan</h4>
+                <ol class="list-decimal pl-5 text-sm text-stone-700 mt-2 space-y-1">
+                    <li>Researcher returns low <code class="bg-stone-100 px-1 rounded">confidence</code> on one sub-question.</li>
+                    <li>Supervisor adds a refined sub-question and re-assigns.</li>
+                    <li>Log replan events in trace.</li>
+                </ol>
+                <p class="text-xs text-emerald-700 mt-2"><strong>Done when:</strong> replan occurs at most once per sub-question; final packets cover all plan items or document explicit gaps.</p>
+            </div>
+            <div class="border border-stone-200 rounded-lg p-4">
+                <h4 class="font-semibold text-stone-800">Lab 11.4 — Cost report</h4>
+                <ol class="list-decimal pl-5 text-sm text-stone-700 mt-2 space-y-1">
+                    <li>Track tokens and $ per agent across a 3-topic batch.</li>
+                    <li>Produce <code class="bg-stone-100 px-1 rounded">evals/reports/m11-cost.md</code> comparing M10 single-agent on same topics.</li>
+                </ol>
+                <p class="text-xs text-emerald-700 mt-2"><strong>Done when:</strong> per-agent and total cost listed; methodology documented; quality note on when multi-agent was worth the premium.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mini project -->
+    <div class="bg-white p-6 rounded-lg shadow-md border-2 border-indigo-200">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-2">Mini Project — Multi-Agent Research &amp; Content Pipeline</h3>
+        <p class="text-stone-700 mb-4">
+            Build a LangGraph pipeline with four roles — planner, researchers, writer, critic — plus per-agent traces,
+            end-of-run cost report, and API integration extending M10 FastAPI.
+        </p>
+        <div class="flex flex-wrap items-center justify-center gap-2 text-center text-sm mb-4">
+            <div class="bg-indigo-50 px-3 py-2 rounded-lg border border-indigo-100 font-medium text-indigo-900">Topic</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-purple-50 px-3 py-2 rounded-lg border border-purple-100 font-medium text-purple-900">Planner</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-amber-50 px-3 py-2 rounded-lg border border-amber-100 font-medium text-amber-900">Researchers (parallel cap)</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-stone-100 px-3 py-2 rounded-lg border border-stone-200 font-medium text-stone-800">Writer</div>
+            <span class="text-stone-400">⇄</span>
+            <div class="bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-100 font-medium text-emerald-900">Critic (max 2 rounds)</div>
+            <span class="text-stone-400">→</span>
+            <div class="bg-indigo-50 px-3 py-2 rounded-lg border border-indigo-100 font-medium text-indigo-900">Final draft + cost report</div>
+        </div>
+        <h4 class="font-semibold text-stone-800 mb-2">Spec</h4>
+        <ol class="list-decimal pl-5 text-sm text-stone-700 space-y-1 mb-4">
+            <li><strong>Planner</strong> — decomposes user topic into sub-questions (structured <code class="bg-stone-100 px-1 rounded">Plan</code>).</li>
+            <li><strong>Researchers</strong> — one or parallel workers; M7 RAG + web tools; output <code class="bg-stone-100 px-1 rounded">ResearchPacket</code> each.</li>
+            <li><strong>Writer</strong> — draft from packets only; no tools.</li>
+            <li><strong>Critic</strong> — evaluator against sources; evaluator-optimizer loop with max 2 revisions.</li>
+        </ol>
+        <h4 class="font-semibold text-stone-800 mb-2">Definition of done</h4>
+        <ul class="space-y-2 text-sm text-stone-700 mb-4">
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> Four roles implemented with least-privilege tools</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> Structured handoffs validated; writer cannot call retrieval tools</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> Evaluator-optimizer capped at 2 revision rounds</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> <code class="bg-stone-100 px-1 rounded">evals/reports/m11-pipeline.md</code>: 3 sample topics with traces + cost report</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> Comparison table vs M10 single-agent (quality + cost + latency)</li>
+        </ul>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-stone-100 text-left">
+                        <th class="border border-stone-200 p-2">Criterion</th>
+                        <th class="border border-stone-200 p-2">Weight</th>
+                        <th class="border border-stone-200 p-2">Excellent</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700">
+                    <tr>
+                        <td class="border border-stone-200 p-2">Topology &amp; roles</td>
+                        <td class="border border-stone-200 p-2">25%</td>
+                        <td class="border border-stone-200 p-2">Clear sequential + critic loop; no tool leakage</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2">Grounding</td>
+                        <td class="border border-stone-200 p-2">30%</td>
+                        <td class="border border-stone-200 p-2">Citations trace to packets; critic catches injected factual error in test</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2">Observability</td>
+                        <td class="border border-stone-200 p-2">25%</td>
+                        <td class="border border-stone-200 p-2">Per-agent traces; cost report reproducible</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-stone-200 p-2">Engineering</td>
+                        <td class="border border-stone-200 p-2">20%</td>
+                        <td class="border border-stone-200 p-2">Caps on parallel research, revisions, and steps; checkpoint optional but documented</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Bridge -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">Bridge to Part IV — Production AI</h3>
+        <p class="text-stone-700 text-sm mb-4">
+            Part III gave you <strong>agency</strong>: single agent (M8–M10), memory and planning (M9), orchestration (M10), multi-agent pipelines (M11).
+            Part IV hardens the same systems for production: auth, rate limits, deployment, monitoring, red-teaming, and regression gates (Module 12).
+        </p>
+        <p class="text-stone-700 text-sm mb-2"><strong>Take forward:</strong></p>
+        <ul class="list-disc pl-5 text-sm text-stone-700 space-y-1 mb-4">
+            <li>M10 API + M11 pipeline as deployable services.</li>
+            <li>Per-agent traces and cost reports → dashboards and budget alerts.</li>
+            <li>M7 retriever and M9 memory as shared platform tools.</li>
+        </ul>
+        <p class="text-sm text-stone-500">
+            Leave behind: adding agents for appearance. Every new role needs a measurable quality or compliance win that pays for its tokens.
+        </p>
+    </div>
+
+    <!-- Part III closing -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-indigo-700 mb-4">Part III Closing Checklist</h3>
+        <p class="text-stone-700 mb-3">Before Part IV, confirm:</p>
+        <ul class="space-y-2 text-sm text-stone-700 mb-4">
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> You can draw your M11 pipeline topology and name every handoff schema</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> You know the dollar cost of one full pipeline run vs one M10 research call</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> Critic/evaluator is independent of writer context (model or prompt separation)</li>
+            <li class="flex gap-2"><span class="text-indigo-600">☐</span> You can explain when you would <strong>not</strong> use multi-agent for a given product request</li>
+        </ul>
+        <p class="text-sm text-stone-500">
+            That is the multi-agent bar — not &ldquo;we have four ChatGPT personas,&rdquo; but &ldquo;we split roles, bound cost, and prove the pipeline improves outcomes.&rdquo;
+        </p>
+        <p class="mt-6 text-sm flex flex-wrap gap-4">
+            <a href="#m10" class="text-stone-500 hover:underline">← M10 Agent Orchestration Frameworks</a>
+            <a href="#m12" class="text-indigo-600 font-medium hover:underline">Next: M12 — Production AI →</a>
+        </p>
+    </div>
+</section>
