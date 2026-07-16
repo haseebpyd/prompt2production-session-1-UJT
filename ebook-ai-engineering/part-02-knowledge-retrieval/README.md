@@ -2,6 +2,7 @@
 
 **Course:** AI Engineering: From LLMs to Production-Grade Agentic Systems  
 **Audience:** AlrightTech Intern Engineering Program · Edition 2025–2026  
+**Trainers:** Mr. Haseeb · Aftab Ahmad (AlrightTech)  
 **Prerequisite:** Part I — Foundations (Modules M1–M3)
 
 This volume expands curriculum Modules **M4–M7** into a teaching ebook: mental models, production judgment, worked Python examples, labs, and mini-project rubrics.

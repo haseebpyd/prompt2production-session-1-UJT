@@ -2,6 +2,8 @@
 
 Teaching volumes for **AI Engineering: From LLMs to Production-Grade Agentic Systems** (AlrightTech Intern Engineering Program).
 
+**Trainers:** Mr. Haseeb (COO · Full Stack AI Engineer) · Aftab Ahmad (Full Stack Agentic AI Engineer), AlrightTech
+
 | Part | Status | Path |
 | :---- | :---- | :---- |
 | Part I — Foundations (M1–M3) | Live on site (`agentic-ai/chapters/`) | HTML chapters 01–03 |

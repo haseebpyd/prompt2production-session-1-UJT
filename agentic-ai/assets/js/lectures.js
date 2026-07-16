@@ -7,6 +7,18 @@ const LECTURES = {
         title: 'Week 1 — Foundations & Prompts',
         slides: [
             {
+                title: 'Meet Your Trainers',
+                bullets: [
+                    'Mr. Haseeb — COO at AlrightTech · Full Stack AI Engineer',
+                    'Aftab Ahmad — Full Stack Agentic AI Engineer at AlrightTech',
+                    'AlrightTech Intern Engineering Program — Agentic AI track',
+                    'Ebook for depth · Lecture slides for weekly focus',
+                ],
+                links: [
+                    { label: 'Course Home', url: '#home' },
+                ],
+            },
+            {
                 title: 'Week 1 Agenda',
                 bullets: [
                     'Modules: M1 LLM Foundations → M2 Prompt Engineering',

@@ -1,6 +1,7 @@
 # Part III — Agentic AI
 
 **Course:** AI Engineering: From LLMs to Production-Grade Agentic Systems  
+**Trainers:** Mr. Haseeb · Aftab Ahmad (AlrightTech)  
 **Prerequisite:** Part II — Knowledge & Retrieval (M4–M7)
 
 Move from single calls to goal-directed systems: agents that reason, use tools, remember, plan, and collaborate.

@@ -1,6 +1,7 @@
 # Part IV — Production AI
 
 **Course:** AI Engineering: From LLMs to Production-Grade Agentic Systems  
+**Trainers:** Mr. Haseeb · Aftab Ahmad (AlrightTech)  
 **Prerequisite:** Part III — Agentic AI (M8–M11)
 
 Turn prototypes into products: evaluate quality, defend against LLM risks, then deploy traced, cost-controlled services.
